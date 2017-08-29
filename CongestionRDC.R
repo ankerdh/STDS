@@ -20,6 +20,7 @@ substr(raw.content, 1, 100)
 clean.content <- fromJSON(raw.content)
 class(clean.content) #it's a list
 length(clean.content) 
-Wide.Congestion <- as.data.frame(clean.content[[2]])
+Congestion <- as.data.frame(clean.content[[2]])
+Wide.Congestion <- as.data.frame(Congestion$properties)
+Narrow <-gather(Wide.Congestion,key=hour,value=count,hour_00:hour_23)
 
-# Need to tidy up the variables using tidyverse (job for another day)
