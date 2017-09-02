@@ -19,4 +19,6 @@ length(roadwork)
 roadwork[[5]]
 
 roadwork.df <- as.data.frame(roadwork[[5]])
-roadwork.df
+roadwork.prop <- as.data.frame(roadwork.df$properties)
+roadwork.geo <- as.data.frame(roadwork.df$geometry)
+roadwork.df <- merge(roadwork.geo,roadwork.prop)
