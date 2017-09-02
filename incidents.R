@@ -21,5 +21,5 @@ incidents[[5]]
 incidents.df <- as.data.frame(incidents[[5]])
 incidents.prop <- as.data.frame(incidents.df$properties)
 incidents.geo <- as.data.frame(incidents.df$geometry)
-incidents.df.other <- merge(incidents.geo,incidents.prop)
+incidents.df <- merge(incidents.geo,incidents.prop)
 
