@@ -4,30 +4,30 @@ library(tidyr)
 library(ggplot2)
 library(ggmap)
 
-events.df$geometry$coordinates <- gsub("c(","",events.df$geometry$coordinates, fixed=TRUE)
-events.df$geometry$coordinates <- gsub(")","",events.df$geometry$coordinates, fixed=TRUE)
-incidents.df$geometry$coordinates <- gsub("c(","",incidents.df$geometry$coordinates, fixed=TRUE)
-incidents.df$geometry$coordinates <- gsub(")","",incidents.df$geometry$coordinates, fixed=TRUE)
-roadwork.df$geometry$coordinates <- gsub("c(","",roadwork.df$geometry$coordinates, fixed=TRUE)
-roadwork.df$geometry$coordinates <- gsub(")","",roadwork.df$geometry$coordinates, fixed=TRUE)
+events.df$coordinates <- gsub("c(","",events.df$coordinates, fixed=TRUE)
+events.df$coordinates <- gsub(")","",events.df$coordinates, fixed=TRUE)
+incidents.df$coordinates <- gsub("c(","",incidents.df$coordinates, fixed=TRUE)
+incidents.df$coordinates <- gsub(")","",incidents.df$coordinates, fixed=TRUE)
+roadwork.df$coordinates <- gsub("c(","",roadwork.df$coordinates, fixed=TRUE)
+roadwork.df$coordinates <- gsub(")","",roadwork.df$coordinates, fixed=TRUE)
 
-events.df$geometry <- events.df$geometry %>% separate(coordinates, c("lon","lat"), sep=",")
-incidents.df$geometry <- incidents.df$geometry %>% separate(coordinates, c("lon","lat"), sep=",")
-roadwork.df$geometry <- roadwork.df$geometry %>% separate(coordinates, c("lon","lat"), sep=",")
+events.df <- events.df %>% separate(coordinates, c("lon","lat"), sep=",")
+incidents.df <- incidents.df %>% separate(coordinates, c("lon","lat"), sep=",")
+roadwork.df <- roadwork.df %>% separate(coordinates, c("lon","lat"), sep=",")
 
 
-events.df$geometry$lon <- as.numeric(events.df$geometry$lon)
-events.df$geometry$lat <- as.numeric(events.df$geometry$lat)
-incidents.df$geometry$lon <-  as.numeric(incidents.df$geometry$lon)
-incidents.df$geometry$lat <-  as.numeric(incidents.df$geometry$lat)
-roadwork.df$geometry$lon <-  as.numeric(roadwork.df$geometry$lon)
-roadwork.df$geometry$lat <-  as.numeric(roadwork.df$geometry$lat)
+events.df$lon <- as.numeric(events.df$lon)
+events.df$lat <- as.numeric(events.df$lat)
+incidents.df$lon <-  as.numeric(incidents.df$lon)
+incidents.df$lat <-  as.numeric(incidents.df$lat)
+roadwork.df$lon <-  as.numeric(roadwork.df$lon)
+roadwork.df$lat <-  as.numeric(roadwork.df$lat)
 
 syd <- ggmap(get_googlemap(c(lon=151, lat=-33.9), zoom=10, maptype="terrain", size=c(600,400)))
 
 syd +
-  geom_point(aes(x=geometry$lon, y=geometry$lat), data=events.df, colour="blue", size=3) +
-  geom_point(aes(x=geometry$lon, y=geometry$lat), data=incidents.df, colour="red", size=3) +
-  geom_point(aes(x=geometry$lon, y=geometry$lat), data=roadwork.df, colour="darkorange", size=3) +
+  geom_point(aes(x=lon, y=lat), data=events.df, colour="blue", size=3) +
+  geom_point(aes(x=lon, y=lat), data=incidents.df, colour="red", size=3) +
+  geom_point(aes(x=lon, y=lat), data=roadwork.df, colour="darkorange", size=3) +
   ggtitle("Traffic incidents, roadwork and major events")
 
