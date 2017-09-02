@@ -19,4 +19,6 @@ length(events)
 events[[5]]
 
 events.df <- as.data.frame(events[[5]])
-events.df
+events.prop <- as.data.frame(events.df$properties)
+events.geo <- as.data.frame(events.df$geometry)
+events.df.other <- merge(events.geo,events.prop)

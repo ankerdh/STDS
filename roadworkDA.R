@@ -20,5 +20,5 @@ roadwork[[5]]
 
 roadwork.df <- as.data.frame(roadwork[[5]])
 roadwork.prop <- as.data.frame(roadwork.df$properties)
-roadwork.cord <- as.data.frame(roadwork.df$geometry)
-roadwork.df.other <- merge(roadwork.cord,roadwork.prop)
+roadwork.geo <- as.data.frame(roadwork.df$geometry)
+roadwork.df.other <- merge(roadwork.geo,roadwork.prop)
