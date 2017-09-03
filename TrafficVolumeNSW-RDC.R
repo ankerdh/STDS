@@ -13,9 +13,6 @@ stations_raw <- rawToChar(stations_api$content)
 stations_clean <- fromJSON(stations_raw)
 stations_df <- as.data.frame(stations_clean[[2]])
 stations <- as.data.frame(stations_df$properties)
-M1 <- filter(stations,station_id=="SHT")
-harbour_tunnel <- filter(stations,station_id=="01003")
-harbour_tunnel$station_key
 
 # GET the full count database using the API 
 
@@ -33,7 +30,7 @@ count <-gather(count_wide,key=hour,value=count,hour_00:hour_23)
 
 # Merge the two tables using the key identifier of Station key
 
-traffic_vol <- inner_join(stations,tunnel_count,by = "station_key") #lost about 450 observations - not the end of the world
+traffic_vol <- inner_join(stations,count,by = "station_key") #lost about 450 observations - not the end of the world
 
 # trim df to the variables of interest
 names(traffic_vol)
