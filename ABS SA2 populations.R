@@ -1,16 +1,59 @@
+#1 Attempt using ABS SDMX service
+
 library(rsdmx)
 
 #read the annual population of each SA2 region
 sdmx2 <- readSDMX(providerId = "ABS", resource = "data", flowRef = "ABS_ANNUAL_ERP_ASGS2016",
                  key = list("ERP", "SA2", NULL), start = 2006, end = 2016, dsd = TRUE)
-df2 <- as.data.frame(sdmx2)
+df2 <- as.data.frame(sdmx2, labels = TRUE)
 head(df2)
 
-#but while I can see the XML data in sdmx2, the df is NULL
-#why???
+#results in a NULL df, despite their being data in the sdmx output
+---
+  
+#2 Attempt using ABS JSON and httr package
 
-#the same code works on this OECD dataset, so why not mine?
-sdmx <- readSDMX(providerId = "OECD", resource = "data", flowRef = "MIG",
-                 key = list("TOT", NULL, NULL), start = 2010, end = 2011)
-df <- as.data.frame(sdmx)
-head(df)
+library(httr)
+library(jsonlite)
+library(tidyverse)
+
+sa2.url <- "http://stat.data.abs.gov.au/sdmx-json/data/ABS_ANNUAL_ERP_ASGS2016/ERP.AUS+STE+SA4+SA3+SA2+GCCSA.0+1+1GSYD+102+10201+102011028+102011029+102011030+997+99797+997979799.A/all?startTime=2001&endTime=2016&dimensionAtObservation=allDimensions"
+  
+sa2.api<- GET(sa2.url)
+sa2.pop <- sa2.api$content
+head(sa2.pop)
+
+#weird... just returns some hexadecimal values.....
+---
+
+#Attempt 3 If ABS can't map Lat/Long to SA2, them maybe we may Lat/Long to LGA using Geonames  
+  
+library(geonames)
+
+LGA<- GNfindNearby(
+  lat=-33.883091,
+  lng=151.149364,
+  username="ajdncnsn",
+  featureCode="ADM2"
+  )  
+LGA$geonames[[1]]$name
+
+#returns "Ashfield" (even though that's out by a few hundred metres), 
+#so if RMS data has LGA names that match, maybe this works?
+
+
+---
+#Note to self: List of SA2 codes
+
+dsdUrl <- "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetDataStructure/ABS_ANNUAL_ERP_ASGS2016"
+dsd <- readSDMX(dsdUrl)
+
+#get codelists from DSD
+cls <- slot(dsd, "codelists")
+codelists <- sapply(slot(cls, "codelists"), function(x) slot(x, "id")) #get list of codelists
+codelist <- as.data.frame(slot(dsd, "codelists"), codelistId = "CL_ABS_ANNUAL_ERP_ASGS2016_ASGS_2016") #get a codelist
+
+#get concepts from DSD
+concepts <- as.data.frame(slot(dsd, "concepts"))
+--------
+
