@@ -2,6 +2,7 @@ library(rsdmx)
 library(data.table)
 library(geosphere)
 library(reshape2)
+library(dplyr)
 library(gmapsdistance)
 
 #read in selected variables from the ABS table ABS_REGIONAL_LGA
