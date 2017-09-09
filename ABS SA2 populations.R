@@ -41,19 +41,42 @@ LGA$geonames[[1]]$name
 #returns "Ashfield" (even though that's out by a few hundred metres), 
 #so if RMS data has LGA names that match, maybe this works?
 
+# Attempt 4 - Rohan
+# SA2
+SA2url <- "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_ANNUAL_ERP_ASGS2016/all?startTime=2006&endTime=2016&format=compact_v2"
+SA2pop_raw <- readSDMX(SA2url)
+SA2pop <- as.data.frame(SA2pop_raw)
 
----
-#Note to self: List of SA2 codes
-
-dsdUrl <- "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetDataStructure/ABS_ANNUAL_ERP_ASGS2016"
-dsd <- readSDMX(dsdUrl)
+# SA2 Names
+SA2dsd_url <- "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetDataStructure/ABS_ANNUAL_ERP_ASGS2016"
+SA2dsd <- readSDMX(SA2dsd_url)
 
 #get codelists from DSD
-cls <- slot(dsd, "codelists")
-codelists <- sapply(slot(cls, "codelists"), function(x) slot(x, "id")) #get list of codelists
-codelist <- as.data.frame(slot(dsd, "codelists"), codelistId = "CL_ABS_ANNUAL_ERP_ASGS2016_ASGS_2016") #get a codelist
-
+SA2cls <- slot(SA2dsd, "codelists")
+SA2codelists <- sapply(slot(SA2cls, "codelists"), function(x) slot(x, "id")) #get list of codelists
+SA2codelist <- as.data.frame(slot(SA2dsd, "codelists"), codelistId = "CL_ABS_ANNUAL_ERP_ASGS2016_ASGS_2016") #get a codelist
 #get concepts from DSD
-concepts <- as.data.frame(slot(dsd, "concepts"))
---------
+SA2concepts <- as.data.frame(slot(SA2dsd, "concepts"))
 
+## Merge names to SA2 codes
+SA2pop_full <- inner_join(SA2pop,SA2codelist,c("ASGS_2016" = "id")) 
+
+
+# LGA
+LGAurl <- "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_ERP_LGA2016/all?startTime=2006&endTime=2016&format=compact_v2"
+LGApop_raw <- readSDMX(LGAurl)
+LGApop <- as.data.frame(LGApop_raw)
+
+# SA2 Names
+LGAdsd_url <- "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetDataStructure/ABS_ERP_LGA2016"
+LGAdsd <- readSDMX(LGAdsd_url)
+
+#get codelists from DSD
+LGAcls <- slot(LGAdsd, "codelists")
+LGAcodelists <- sapply(slot(LGAcls, "codelists"), function(x) slot(x, "id")) #get list of codelists
+LGAcodelists
+LGAcodelist <- as.data.frame(slot(LGAdsd, "codelists"), codelistId = "CL_ABS_ERP_LGA2016_LGA_2016") #get a codelist
+#get concepts from DSD
+LGAconcepts <- as.data.frame(slot(LGAdsd, "concepts"))
+
+LGApop_full <- inner_join(LGApop,LGAcodelist,c("LGA_2016" = "id")) 
