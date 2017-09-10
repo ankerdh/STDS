@@ -64,6 +64,7 @@ traffic_vol_small <- traffic_vol %>%
          wgs84_longitude,
          traffic_direction_seq,
          cardinal_direction_seq,
+         date,
          year,
          month,
          day_of_week,
@@ -74,6 +75,12 @@ traffic_vol_small <- traffic_vol %>%
 ## classification_seq = 0: UNCLASSIFIED 1: ALL VEHICLES 2: LIGHT VEHICLES 3: HEAVY VEHICLES -9: MISSING    
 ## traffic_direction_seq = 0: COUNTER 1: PRESCRIBED 2: BOTH -- not sure if this is needed
 ## cardinal_direction_seq = 1: NORTH 3: EAST 5: SOUTH 7: WEST 9: NORTHBOUND AND SOUTHBOUND 10: EASTBOUND AND WESTBOUND
+
+## update factors
+traffic_vol_small$classification_seq <- factor(traffic_vol_small$classification_seq,levels=c(0,1,2,3,-9),labels = c("UNCLASSIFIED","ALL VEHICLES","LIGHT VEHICLES","HEAVY VEHICLES","MISSING"))
+traffic_vol_small$traffic_direction_seq <- factor(traffic_vol_small$traffic_direction_seq,levels=c(0,1,2),labels = c("COUNTER","PRESCRIBED","BOTH"))
+traffic_vol_small$cardinal_direction_seq <- factor(traffic_vol_small$cardinal_direction_seq,levels=c(1,3,5,7,9,10),labels = c("NORTH","EAST","SOUTH","WEST","NORTHBOUND AND SOUTHBOUND","EASTBOUND & WESTBOUND"))
+
 
 #### IF WANTING DATABASE BY HOUR USE THE FOLLOWING ####
 
