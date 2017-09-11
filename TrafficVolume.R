@@ -129,8 +129,13 @@ LGA.wide <- LGA.wide[,c("lga","year","lga.area.2014","pop.density","pop.work.age
 
 #left join to add ABS data for LGA/Year to each row of traffic data
 
+<<<<<<< HEAD
 ###   NOTE  NOTE   NOTE  #######just joins to a SUBSET for now, not the full traffic dataset
 traffic_vol_test<- traffic_vol_small[seq(1, 90000, by = 6500),]
+=======
+###   NOTE  NOTE   NOTE  #######just a TEST for now, not the full traffic dataset
+traffic_vol_test<- traffic_vol_small[seq(1, 90000, by = 1000),]
+>>>>>>> 2d29d6870c98b0a813b44eec053e105e4cd9f551
 traffic.with.abs <- merge(x = traffic_vol_test, y = LGA.wide, by = c("lga", "year"), all.x = TRUE)
 
 #now calculate distance from Sydney CBD for each station
