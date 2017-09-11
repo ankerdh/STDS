@@ -51,14 +51,14 @@ LGA.wide <- LGA.wide[,c("lga","year","lga.area.2014","pop.density",'pop.work.age
 #left join to add ABS data for LGA/Year to each row of traffic data
 
 ###   NOTE  NOTE   NOTE  #######just a TEST for now, not the full traffic dataset
-traffic_vol_test<- traffic_vol[seq(1, 90000, by = 6500),]
+traffic_vol_test<- traffic_vol_small[seq(1, 90000, by = 6500),]
 traffic.with.abs <- merge(x = traffic_vol_test, y = LGA.wide, by = c("lga", "year"), all.x = TRUE)
 
 #now calculate distance from Sydney CBD for each station
 
 #make list of stations
 ###   NOTE  NOTE   NOTE  #######just a TEST for now, not the full traffic dataset
-station.locations <- unique(traffic_vol_test[,c("station_id","wgs84_latitude","wgs84_longitude")])
+station.locations <- unique(traffic_vol_test[,c("station_key","wgs84_latitude","wgs84_longitude")])
 
 #create function to calculate distance by road to Sydney Tower
 get.distance <- function(x,y,z) {
@@ -70,14 +70,14 @@ get.distance <- function(x,y,z) {
   shape = "long",
   key = "AIzaSyDDihK34ya701nYseOdUXLDwH7XWfYMuC0")
   results.df<-data.frame(results)
-  results.df$station_id <- z
+  results.df$station_key <- z
   results.df
 }
 
 #calculate distance for each station
-distance.df <- get.distance(station.locations$wgs84_latitude,station.locations$wgs84_longitude, station.locations$station_id)
-distances.table <- distance.df[,c("station_id", "Distance.Distance")]
+distance.df <- get.distance(station.locations$wgs84_latitude,station.locations$wgs84_longitude, station.locations$station_key)
+distances.table <- distance.df[,c("station_key", "Distance.Distance")]
 
 #add to the traffic table
-traffic.with.abs <- merge(x = traffic.with.abs, y = distances.table, by = "station_id", all.x = TRUE)
+traffic.with.abs <- merge(x = traffic.with.abs, y = distances.table, by = "station_key", all.x = TRUE)
 
