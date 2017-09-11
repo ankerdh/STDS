@@ -76,7 +76,8 @@ traffic_vol_small$cardinal_direction_seq <- factor(traffic_vol_small$cardinal_di
 traffic_vol_small$day_of_week <- factor(traffic_vol_small$day_of_week,levels=c(1,2,3,4,5,6,7),labels = c("MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"))
 
 #read in selected variables from the ABS table ABS_REGIONAL_LGA
-LGAurl <- "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_REGIONAL_LGA/ERP_18+ERP_21+200IND+MVC_14+MVC_15+MVC_16+MVC_17+MVC_18+MVC_19+MVC_20+MVC_21+MVC_22+MVC_38+LAND.LGA2014..A/all?startTime=2011&endTime=2016&format=compact_v2"
+LGAurl <- "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_REGIONAL_LGA/ERP_18+ERP_21+ERP_6+200IND+MVC_14+MVC_15+MVC_16+MVC_17+MVC_18+MVC_19+MVC_20+MVC_21+MVC_22+MVC_38+CABEE_36+CABEE_35+INCOME_17+LAND.LGA2014..A/all?startTime=2011&endTime=2016&format=compact_v2"
+
 LGA_raw <- readSDMX(LGAurl)
 LGA <- as.data.frame(LGA_raw)
 
@@ -101,31 +102,46 @@ LGA_full$label.en <- gsub(" \\(.*$","", LGA_full$label.en)
 land.area.2014 <- LGA_full[LGA_full$MEASURE=="LAND",c("REGION","OBS_VALUE")]
 LGA_full <- merge(x = LGA_full, y = land.area.2014, by = "REGION", all.x = TRUE)
 
+#Check INCOME_17 aka median.income as it may not be available all years?
+
 #make a wide table
 LGA.wide <- dcast(LGA_full, REGION + label.en + TIME + OBS_VALUE.y ~ MEASURE, value.var = c("OBS_VALUE.x"))
 
 #change col names
-setnames(LGA.wide,c("label.en","TIME", "OBS_VALUE.y","ERP_21","ERP_18", "MVC_14", "MVC_38"),c("lga","year","lga.area.2014","pop.density",'pop.work.age.percent',"vehicles.rego.cars","vehicles.rego.total"))
+setnames(LGA.wide,c("label.en","TIME", "OBS_VALUE.y","ERP_21","ERP_18", "ERP_6", "CABEE_36", "CABEE_35", "INCOME_17"),c("lga","year","lga.area.2014","pop.density","pop.work.age.percent","pop.school.age.percent","transport.businesses", "total.businesses", "median.income"))
 
-#change variable classes and create densities for vehicles
+#change variable classes 
 LGA.wide$year <- as.integer(LGA.wide$year)
-LGA.wide[,c("lga.area.2014","pop.density",'pop.work.age.percent',"vehicles.rego.cars","vehicles.rego.total")] <- as.numeric(unlist(LGA.wide[,c("lga.area.2014","pop.density",'pop.work.age.percent',"vehicles.rego.cars","vehicles.rego.total")]))
-LGA.wide$density.vehicles.cars <- LGA.wide$vehicles.rego.cars / LGA.wide$lga.area.2014
-LGA.wide$density.vehicles.total <- LGA.wide$vehicles.rego.total / LGA.wide$lga.area.2014
+LGA.wide[,c("lga.area.2014","pop.density","pop.work.age.percent","pop.school.age.percent","MVC_14","MVC_15","MVC_16","MVC_17","MVC_18","MVC_19","MVC_20","MVC_21","MVC_22","transport.businesses", "total.businesses", "median.income")] <- as.numeric(unlist(LGA.wide[,c("lga.area.2014","pop.density","pop.work.age.percent","pop.school.age.percent","MVC_14","MVC_15","MVC_16","MVC_17","MVC_18","MVC_19","MVC_20","MVC_21","MVC_22","transport.businesses", "total.businesses", "median.income")]))
+
+#create light vehicle and heavy vehicle stats
+LGA.wide$vehicles.light <- sum(LGA.wide$MVC_14, LGA.wide$MVC_15, LGA.wide$MVC_16, LGA.wide$MVC_17, LGA.wide$MVC_22, na.rm=TRUE)
+LGA.wide$vehicles.heavy <- sum(LGA.wide$MVC_18, LGA.wide$MVC_19, LGA.wide$MVC_20, LGA.wide$MVC_21, na.rm=TRUE)
+
+#create densities for vehicles, businesses
+LGA.wide$density.vehicles.light <- LGA.wide$vehicles.light / LGA.wide$lga.area.2014
+LGA.wide$density.vehicles.heavy <- LGA.wide$vehicles.heavy / LGA.wide$lga.area.2014
+LGA.wide$density.transport.businesses <- LGA.wide$transport.businesses / LGA.wide$lga.area.2014
+LGA.wide$density.total.businesses <- LGA.wide$total.businesses / LGA.wide$lga.area.2014
 
 #subset the final columns we need
-LGA.wide <- LGA.wide[,c("lga","year","lga.area.2014","pop.density",'pop.work.age.percent',"density.vehicles.cars","density.vehicles.total")]
+LGA.wide <- LGA.wide[,c("lga","year","lga.area.2014","pop.density","pop.work.age.percent","pop.school.age.percent","density.vehicles.light","density.vehicles.heavy","density.transport.businesses","density.total.businesses","median.income")]
 
 #left join to add ABS data for LGA/Year to each row of traffic data
 
+<<<<<<< HEAD
+###   NOTE  NOTE   NOTE  #######just joins to a SUBSET for now, not the full traffic dataset
+traffic_vol_test<- traffic_vol_small[seq(1, 90000, by = 6500),]
+=======
 ###   NOTE  NOTE   NOTE  #######just a TEST for now, not the full traffic dataset
 traffic_vol_test<- traffic_vol_small[seq(1, 90000, by = 1000),]
+>>>>>>> 2d29d6870c98b0a813b44eec053e105e4cd9f551
 traffic.with.abs <- merge(x = traffic_vol_test, y = LGA.wide, by = c("lga", "year"), all.x = TRUE)
 
 #now calculate distance from Sydney CBD for each station
 
 #make list of stations
-###   NOTE  NOTE   NOTE  #######just a TEST for now, not the full traffic dataset
+###   NOTE  NOTE   NOTE  #######just a SUBSET for now, not the full traffic dataset
 station.locations <- unique(traffic_vol_test[,c("station_key","wgs84_latitude","wgs84_longitude")])
 
 #create function to calculate distance by road to Sydney Tower
@@ -151,7 +167,8 @@ traffic.with.abs <- merge(x = traffic.with.abs, y = distances.table, by = "stati
 
 ################################################
 ############## REMAINING STEPS #################
-# 1) Fill data for 2017 (need some assumptions)
-# 2) Model data (daily_total ~ other variables)
-# 3) Interpret modelling
+# 1) Add weather data
+# 2) Fill missing ABS data for 2017 (need some assumptions)
+# 3) Model data (daily_total ~ other variables)
+# 4) Interpret modelling
 ################################################
