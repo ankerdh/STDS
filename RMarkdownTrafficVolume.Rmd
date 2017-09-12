@@ -1,3 +1,19 @@
+---
+title: "Gridlock Analytics"
+author: "Rohan"
+date: "12 September 2017"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+This document runs through TrafficVolume from top to bottom
+
+```{r, include=FALSE,echo=FALSE}
 library(httr)
 library(jsonlite)
 library(tidyverse)
@@ -21,7 +37,7 @@ stations_df <- as.data.frame(stations_clean[[2]])
 stations <- as.data.frame(stations_df$properties)
 
 # GET the count database using the API for 2011 onwards
-count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3E%3D2011",
+count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20limit%2010",
                 verbose(), 
                 encode="json", 
                 add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
@@ -43,7 +59,7 @@ count$hour <- gsub("hour_","", count$hour)
 count$hour <- as.numeric(count$hour)
 
 # Merge the two tables using the key identifier of Station key - inner join returns where a match is found
-traffic_vol <- inner_join(stations,count,by = "station_key") #lost 400 or so observations
+traffic_vol <- inner_join(stations,count,by = "station_key") 
 
 # select the variables of interest in the dataframe (exclude unnecessary variables)
 names(traffic_vol)
@@ -137,12 +153,9 @@ LGA.wide <- LGA.wide[,c("lga","year","lga.area.2014","pop.density","pop.work.age
 
 #left join to add ABS data for LGA/Year to each row of traffic data
 
-#<<<<<<< HEAD
-###   NOTE  NOTE   NOTE  #######just joins to a SUBSET for now, not the full traffic dataset
-traffic_vol_test<- traffic_vol_small[seq(1, 90000, by = 6500),]
 #=======
 ###   NOTE  NOTE   NOTE  #######just a TEST for now, not the full traffic dataset
-traffic_vol_test<- traffic_vol_small[seq(1, 10, by = 1),]
+traffic_vol_test<- traffic_vol_small[seq(1, 240, by = 24),]
 #>>>>>>> 2d29d6870c98b0a813b44eec053e105e4cd9f551
 traffic.with.abs <- merge(x = traffic_vol_test, y = LGA.wide, by = c("lga", "year"), all.x = TRUE)
 
@@ -172,15 +185,9 @@ distances.table <- distance.df[,c("station_key", "Distance.Distance")]
 
 #add to the traffic table
 traffic.with.abs <- merge(x = traffic.with.abs, y = distances.table, by = "station_key", all.x = TRUE)
+```
 
-# Test modelling
-Model <- lm(count~lane_count + pop.density + day_of_week + road_functional_hierarchy ,data = traffic.with.abs)
-summary(Model)
+```{r}
+head(traffic.with.abs)
+```
 
-################################################
-############## REMAINING STEPS #################
-# 1) Add weather data
-# 2) Fill missing ABS data for 2017 (need some assumptions)
-# 3) Model data (daily_total ~ other variables)
-# 4) Interpret modelling
-################################################
