@@ -9,37 +9,43 @@ library(reshape2)
 library(gmapsdistance)
 
 # GET the full stations database using the API
-
 stations_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_station_reference%20",
                    verbose(), 
                    encode="json", 
                    add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
 
+# Extract a clean stations dataframe from the raw API output
 stations_raw <- rawToChar(stations_api$content)
 stations_clean <- fromJSON(stations_raw)
 stations_df <- as.data.frame(stations_clean[[2]])
 stations <- as.data.frame(stations_df$properties)
 
 # GET the count database using the API for 2011 onwards
-
 count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3E%3D2011",
                 verbose(), 
                 encode="json", 
                 add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
 
+# Extract a clean counts dataframe from the raw API output
 count_api$status_code
 count_raw <- rawToChar(count_api$content)
 count_clean <- fromJSON(count_raw)
 count_df <- as.data.frame(count_clean[[2]])
 count_wide <- as.data.frame(count_df$properties)
+
+# add the a monthly day count
 count_wide <- count_wide%>%
   mutate(day=mday(date))
 
-# Merge the two tables using the key identifier of Station key
+# gather the hourly counts into a single column by hour
+count <-gather(count_wide,key=hour,value=count,hour_00:hour_23)
+count$hour <- gsub("hour_","", count$hour)
+count$hour <- as.numeric(count$hour)
 
-traffic_vol <- inner_join(stations,count_wide,by = "station_key") #lost 20 observations
+# Merge the two tables using the key identifier of Station key - inner join returns where a match is found
+traffic_vol <- inner_join(stations,count,by = "station_key") #lost 400 or so observations
 
-# trim df to the variables of interest
+# select the variables of interest in the dataframe (exclude unnecessary variables)
 names(traffic_vol)
 traffic_vol_small <- traffic_vol %>%
   select(station_key,
@@ -63,13 +69,15 @@ traffic_vol_small <- traffic_vol %>%
          day_of_week,
          public_holiday,
          school_holiday,
-         daily_total)
+         daily_total,
+         hour,
+         count)
 
 ## classification_seq = 0: UNCLASSIFIED 1: ALL VEHICLES 2: LIGHT VEHICLES 3: HEAVY VEHICLES -9: MISSING    
 ## traffic_direction_seq = 0: COUNTER 1: PRESCRIBED 2: BOTH -- not sure if this is needed
 ## cardinal_direction_seq = 1: NORTH 3: EAST 5: SOUTH 7: WEST 9: NORTHBOUND AND SOUTHBOUND 10: EASTBOUND AND WESTBOUND
 
-## update factors
+## update factors based on above characteristics
 traffic_vol_small$classification_seq <- factor(traffic_vol_small$classification_seq,levels=c(0,1,2,3,-9),labels = c("UNCLASSIFIED","ALL VEHICLES","LIGHT VEHICLES","HEAVY VEHICLES","MISSING"))
 traffic_vol_small$traffic_direction_seq <- factor(traffic_vol_small$traffic_direction_seq,levels=c(0,1,2),labels = c("COUNTER","PRESCRIBED","BOTH"))
 traffic_vol_small$cardinal_direction_seq <- factor(traffic_vol_small$cardinal_direction_seq,levels=c(1,3,5,7,9,10),labels = c("NORTH","EAST","SOUTH","WEST","NORTHBOUND AND SOUTHBOUND","EASTBOUND & WESTBOUND"))
@@ -129,13 +137,13 @@ LGA.wide <- LGA.wide[,c("lga","year","lga.area.2014","pop.density","pop.work.age
 
 #left join to add ABS data for LGA/Year to each row of traffic data
 
-<<<<<<< HEAD
+#<<<<<<< HEAD
 ###   NOTE  NOTE   NOTE  #######just joins to a SUBSET for now, not the full traffic dataset
 traffic_vol_test<- traffic_vol_small[seq(1, 90000, by = 6500),]
-=======
+#=======
 ###   NOTE  NOTE   NOTE  #######just a TEST for now, not the full traffic dataset
-traffic_vol_test<- traffic_vol_small[seq(1, 90000, by = 1000),]
->>>>>>> 2d29d6870c98b0a813b44eec053e105e4cd9f551
+traffic_vol_test<- traffic_vol_small[seq(1, 7000000, by = 1000),]
+#>>>>>>> 2d29d6870c98b0a813b44eec053e105e4cd9f551
 traffic.with.abs <- merge(x = traffic_vol_test, y = LGA.wide, by = c("lga", "year"), all.x = TRUE)
 
 #now calculate distance from Sydney CBD for each station
@@ -144,7 +152,7 @@ traffic.with.abs <- merge(x = traffic_vol_test, y = LGA.wide, by = c("lga", "yea
 ###   NOTE  NOTE   NOTE  #######just a SUBSET for now, not the full traffic dataset
 station.locations <- unique(traffic_vol_test[,c("station_key","wgs84_latitude","wgs84_longitude")])
 
-#create function to calculate distance by road to Sydney Tower
+#create function to calculate distance by road to Sydney Tower - THIS NEEDS TO BE MOVED UP TO INITIAL STATIONS GET
 get.distance <- function(x,y,z) {
   results = gmapsdistance(
     origin = paste(x,y,sep=","), 
@@ -164,6 +172,10 @@ distances.table <- distance.df[,c("station_key", "Distance.Distance")]
 
 #add to the traffic table
 traffic.with.abs <- merge(x = traffic.with.abs, y = distances.table, by = "station_key", all.x = TRUE)
+
+# Test modelling
+Model <- lm(count~lane_count + pop.density + day_of_week + road_functional_hierarchy ,data = traffic.with.abs)
+summary(Model)
 
 ################################################
 ############## REMAINING STEPS #################
