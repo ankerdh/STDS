@@ -22,6 +22,7 @@ library(data.table)
 library(geosphere)
 library(reshape2)
 library(gmapsdistance)
+library(DT)
 ```
 
 Using the NSW Transport OpenData API to obtain the list of permanent stations from around NSW (limited to 50 stations for this example)
@@ -37,10 +38,19 @@ stations_raw <- rawToChar(stations_api$content)
 stations_clean <- fromJSON(stations_raw)
 stations_df <- as.data.frame(stations_clean[[2]])
 stations <- as.data.frame(stations_df$properties)
-head(stations)
+datatable(
+  head(stations), rownames=FALSE,
+  options = list(
+  dom = 't',
+  scrollX = TRUE
+))
 ```
+. 
+
+
 
 Using the NSW Transport OpenData API to obtain the list of vehicle counts per hour from each permanent station (limited to 50 stations for this example)
+
 ```{r,message=FALSE}
 count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%3D2012%20limit%2050",
                 verbose(), 
@@ -59,8 +69,18 @@ count_wide <- count_wide%>%
 count <-gather(count_wide,key=hour,value=count,hour_00:hour_23)
 count$hour <- gsub("hour_","", count$hour)
 count$hour <- as.numeric(count$hour)
-head(count)
+datatable(
+  head(count), rownames=FALSE,
+  options = list(
+  dom = 't',
+  scrollX = TRUE
+))
 ```
+.  
+
+
+
+Merging the two tables and cleaning
 
 ```{r}
 # Merge the two tables using the key identifier of Station key - inner join returns where a match is found
@@ -103,8 +123,16 @@ traffic_vol_small$classification_seq <- factor(traffic_vol_small$classification_
 traffic_vol_small$traffic_direction_seq <- factor(traffic_vol_small$traffic_direction_seq,levels=c(0,1,2),labels = c("COUNTER","PRESCRIBED","BOTH"))
 traffic_vol_small$cardinal_direction_seq <- factor(traffic_vol_small$cardinal_direction_seq,levels=c(1,3,5,7,9,10),labels = c("NORTH","EAST","SOUTH","WEST","NORTHBOUND AND SOUTHBOUND","EASTBOUND & WESTBOUND"))
 traffic_vol_small$day_of_week <- factor(traffic_vol_small$day_of_week,levels=c(1,2,3,4,5,6,7),labels = c("MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"))
-head(traffic_vol_small)
+datatable(
+  head(traffic_vol_small), rownames=FALSE,
+  options = list(
+  dom = 't',
+  scrollX = TRUE
+))
 ```
+.  
+
+
 
 Here we need to limit the LGA API pulls to just a few relevant LGA's so that it can pull quickly but still get the relevant information - left as eval=FALSE until we do this
 
