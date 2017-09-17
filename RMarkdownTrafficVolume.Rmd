@@ -1,7 +1,7 @@
 ---
-title: "Gridlock Analytics"
-author: "Rohan"
-date: "12 September 2017"
+title: "Traffic Volume Prediction"
+author: "Gridlock Analytics"
+date: "17 September 2017"
 output:
   html_document: default
   pdf_document: default
@@ -28,7 +28,7 @@ library(sqldf)
 ```
 
 
-A list of traffic volume collection stations is obtained using the NSW Transport OpenData API.
+A list of traffic counter stations is obtained using the NSW Transport OpenData API.
 
 
 ```{r,message=FALSE}
@@ -52,7 +52,7 @@ datatable(
 *** 
 
 
-Each traffic volume station is then matched to the closest weather station and this information is saved against each traffic volume station.
+Each traffic counter station is then matched to the closest weather station and this information is saved against each traffic counter station.
 
 
 ```{r}
@@ -80,7 +80,7 @@ datatable(
 ***
 
 
-The NSW Transport OpenData API is then accessed again to obtain the number of vehicles which passed the station each hour.
+The NSW Transport OpenData API is then accessed again to obtain the number of vehicles which passed each station hourly.
 
 
 ```{r,message=FALSE}
@@ -169,7 +169,7 @@ datatable(
 *** 
 
 
-Next, demographic information for each Local Government Areas (LGA) is obtained using a API from ABS.
+Next, demographic information for each Local Government Area (LGA) is obtained using an ABS API.
 
 
 ```{r}
@@ -187,7 +187,7 @@ datatable(
 ***
 
 
-This information does not contain the name of the LGA so this must also be sourced from the metadata.
+This does not contain the LGA name so this must also be sourced from the metadata.
 
 
 ```{r}
@@ -209,7 +209,7 @@ datatable(
 ***
 
 
-The two tables are then joined and cleaned.
+The two tables are then merged and cleaned.
 
 
 ```{r,warning=FALSE}
@@ -256,7 +256,7 @@ datatable(
 ***
 
 
-Once cleaned, the ABS demographic data is added to the traffic volume data. Here the distance from each station to the city by road is computed using a google maps API. We will reorder this computation to ensure that all data points are considered. 
+Once cleaned, the ABS demographic data is added to the traffic volume data. Here, the distance from each traffic counter station to the CBD by road is computed using a Google Maps API. We will reorder this computation to ensure that all data points are considered. 
 
 
 ```{r}
@@ -293,7 +293,7 @@ traffic.with.abs <- inner_join(traffic.with.abs,distances.table, by = "station_k
 ***
 
 
-The following table shows a subsection of the merged data. It includes traffic volume  counts at various counting stations which are linked to the closest weather station and demographic data for the Local Government Area where the station sits. Only one example is shown because the previous API loop does not work well in RMarkdown.
+The following table shows a subsection of the merged data. It includes traffic volume counts at various counter stations which are linked to the closest weather station and demographic data for the relevant LGA. (Only one example is shown due to RMarkdown functionality.)
 
 
 ```{r}
