@@ -7,6 +7,9 @@ library(data.table)
 library(geosphere)
 library(reshape2)
 library(gmapsdistance)
+library(sqldf)
+library(tictoc)
+library(RDS)
 
 # GET the full stations database using the API
 stations_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_station_reference%20",
@@ -20,18 +23,110 @@ stations_clean <- fromJSON(stations_raw)
 stations_df <- as.data.frame(stations_clean[[2]])
 stations <- as.data.frame(stations_df$properties)
 
-# GET the count database using the API for 2011 onwards
-count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3E%3D2011",
+# compare each station location to BOM weather stations and choose closest (SOME ARE WRONG!)
+BOMrain <- read_rds("/Users/RohanDanisCox/STDS/BOM_NSW_rain.RDS") # need to change to your location
+BOMrainStation <- data.frame(subset(BOMrain, select = c(1,2, 5,6))) ### WHAT DOES THIS DO?
+colnames(BOMrainStation) <- c("StationNum","name", "lat", "lon")
+UniqueBOMStations <- sqldf('SELECT DISTINCT * FROM BOMrainStation') 
+
+# create distance matrix
+DistMatrix <- distm(stations[,c('wgs84_longitude','wgs84_latitude')], UniqueBOMStations[,c('lon','lat')], fun=distVincentyEllipsoid)/1000
+NearestStation <- data.frame(UniqueBOMStations$StationNum[max.col(-DistMatrix)])
+
+# Only take the unique BOM Stations required
+UniqueNearestStation<-unique(NearestStation)
+
+# Combine with traffic stations information
+stations$nearest_weather_station <- NearestStation$UniqueBOMStations.StationNum.max.col..DistMatrix..
+stations <- inner_join(stations, UniqueBOMStations,c("nearest_weather_station" = "StationNum"))
+
+#### Distance to City --- DO NOT USE THIS SHIT----
+station.locations <- stations[,c("station_key","wgs84_latitude","wgs84_longitude")]
+station.locations.200 <- station.locations %>%
+  filter(row_number() %in% 1:200)
+station.locations.400 <- station.locations %>%
+  filter(row_number() %in% 201:400)
+station.locations.600 <- station.locations %>%
+  filter(row_number() %in% 401:600)
+station.locations.800 <- station.locations %>%
+  filter(row_number() %in% 601:800)
+station.locations.1000 <- station.locations %>%
+  filter(row_number() %in% 801:1000)
+station.locations.1200 <- station.locations %>%
+  filter(row_number() %in% 1001:1200)
+station.locations.1400 <- station.locations %>%
+  filter(row_number() %in% 1201:1400)
+station.locations.1600 <- station.locations %>%
+  filter(row_number() %in% 1401:1600)
+station.locations.1800 <- station.locations %>%
+  filter(row_number() %in% 1601:1800)
+station.locations.1818 <- station.locations %>%
+  filter(row_number() %in% 1801:1818)
+
+
+
+#create function to calculate distance by road to Sydney Tower - THIS NEEDS TO BE MOVED UP TO INITIAL STATIONS GET
+get.distance <- function(x,y,z) {
+  results = gmapsdistance(
+    origin = paste(x,y,sep=","), 
+    destination = "-33.8704512,151.2058792", 
+    mode = "driving", 
+    traffic_model = "best_guess",
+    shape = "long",
+    key = "AIzaSyBlcTlunVo6Zmc2P2i98dwwlNPEKjKFouk")
+  results.df<-data.frame(results)
+  results.df$station_key <- z
+  results.df
+}
+
+#calculate distance for each station
+tic() 
+distance.df200 <- get.distance(station.locations.200$wgs84_latitude,station.locations.200$wgs84_longitude, station.locations.200$station_key)
+distance.df400 <- get.distance(station.locations.400$wgs84_latitude,station.locations.400$wgs84_longitude, station.locations.400$station_key)
+distance.df600 <- get.distance(station.locations.600$wgs84_latitude,station.locations.600$wgs84_longitude, station.locations.600$station_key)
+distance.df800 <- get.distance(station.locations.800$wgs84_latitude,station.locations.800$wgs84_longitude, station.locations.800$station_key)
+distance.df1000 <- get.distance(station.locations.1000$wgs84_latitude,station.locations.1000$wgs84_longitude, station.locations.1000$station_key)
+distance.df1200 <- get.distance(station.locations.1200$wgs84_latitude,station.locations.1200$wgs84_longitude, station.locations.1200$station_key)
+distance.df1400 <- get.distance(station.locations.1400$wgs84_latitude,station.locations.1400$wgs84_longitude, station.locations.1400$station_key)
+distance.df1600 <- get.distance(station.locations.1600$wgs84_latitude,station.locations.1600$wgs84_longitude, station.locations.1600$station_key)
+distance.df1800 <- get.distance(station.locations.1800$wgs84_latitude,station.locations.1800$wgs84_longitude, station.locations.1800$station_key)
+distance.df1818 <- get.distance(station.locations.1818$wgs84_latitude,station.locations.1818$wgs84_longitude, station.locations.1818$station_key)
+check <- rbind(distance.df200,distance.df400,distance.df600,distance.df800,distance.df1000,distance.df1200,distance.df1400,distance.df1600,distance.df1800,distance.df1818)
+
+distances.table <- check[,c("station_key", "Distance.Distance")]
+stations <- inner_join(stations,distances.table,by="station_key")
+stations <- rename(stations,"Distance_CBD" ="Distance.Distance")
+saveRDS(stations,file= "SecretFile.rds")
+
+# Open this instead 
+stations <- read_rds("/Users/RohanDanisCox/STDS/SecretFile.rds") # need to change to your location
+
+# GET the PERMANENT stations count database using the API for 2011 onwards ---- NEED TO ADD IN SAMPLE COUNTS
+perm_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3E%3D2011",
                 verbose(), 
                 encode="json", 
                 add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
 
 # Extract a clean counts dataframe from the raw API output
-count_api$status_code
-count_raw <- rawToChar(count_api$content)
-count_clean <- fromJSON(count_raw)
-count_df <- as.data.frame(count_clean[[2]])
-count_wide <- as.data.frame(count_df$properties)
+perm_count_api$status_code
+perm_count_raw <- rawToChar(perm_count_api$content)
+perm_count_clean <- fromJSON(perm_count_raw)
+perm_count_df <- as.data.frame(perm_count_clean[[2]])
+perm_count_wide <- as.data.frame(perm_count_df$properties)
+
+# GET the SAMPLE stations count database using the API for 2014 onwards ---- NEED TO ADD IN SAMPLE COUNTS
+sam_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_sample%20where%20year%20%3E%3D%202011",
+                     verbose(), 
+                     encode="json", 
+                     add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
+
+# Extract a clean counts dataframe from the raw API output
+sam_count_api$status_code
+sam_count_raw <- rawToChar(sam_count_api$content)
+sam_count_clean <- fromJSON(sam_count_raw)
+sam_count_df <- as.data.frame(sam_count_clean[[2]])
+sam_count_wide <- as.data.frame(sam_count_df$properties)
+
 
 # add the a monthly day count
 count_wide <- count_wide%>%
@@ -180,7 +275,9 @@ summary(Model)
 ################################################
 ############## REMAINING STEPS #################
 # 1) Add weather data
-# 2) Fill missing ABS data for 2017 (need some assumptions)
+# 2) realign code so that distance is handled earlier and sample stations are considered
 # 3) Model data (daily_total ~ other variables)
 # 4) Interpret modelling
 ################################################
+
+check <- unique(count$station_key)
