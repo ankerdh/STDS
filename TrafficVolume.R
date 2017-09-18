@@ -101,21 +101,50 @@ saveRDS(stations,file= "SecretFile.rds")
 # Open this instead 
 stations <- read_rds("/Users/RohanDanisCox/STDS/SecretFile.rds") # need to change to your location
 
+
+getloc_key<- function(year,month){
+  url<- paste("http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?apikey=HNyjZnlRykmDQLvWoyCOc460vyjPg9dJ&q=",lat,"%2C",long,"&details=true",sep="")
+  bomgetkey<-GET(url)
+  bomgetkey$status_code
+  location_raw<-rawToChar(bomgetkey$content)
+  location_cln <-fromJSON(location_raw,simplifyDataFrame = TRUE)
+  location_key <-location_clean$Key
+}
+#call the function to get location key for the geocoordinates
+getloc_key(-33,151)
+
+##### THIS DOESN'T WORK YET BUT HOPEFULLY SOON
+year <- 2011:2016
+month <- 1:12
+for(i in year) {
+    for (j in month){
+      url<- paste("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3D%20",i,"%20and%20month%20%3D%20",j,"%20",sep="")
+      perm_count_api <- GET(url,
+                            verbose(),
+                            encode="json",
+                            add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
+      perm_count_raw <- rawToChar(perm_count_api$content)
+      perm_count_clean <- fromJSON(perm_count_raw)
+      perm_count_df <- as.data.frame(perm_count_clean[[2]])
+      perm_count_wide <- as.data.frame(perm_count_df$properties)
+    }}
+
 # GET the PERMANENT stations count database using the API for 2011 onwards ---- NEED TO ADD IN SAMPLE COUNTS
-perm_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3E%3D2011",
+perm_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3D2011",
                 verbose(), 
                 encode="json", 
                 add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
 
+
 # Extract a clean counts dataframe from the raw API output
-perm_count_api$status_code
-perm_count_raw <- rawToChar(perm_count_api$content)
-perm_count_clean <- fromJSON(perm_count_raw)
-perm_count_df <- as.data.frame(perm_count_clean[[2]])
-perm_count_wide <- as.data.frame(perm_count_df$properties)
+perm_count_api2011$status_code
+perm_count_raw2011 <- rawToChar(perm_count_api2011$content)
+perm_count_clean2011 <- fromJSON(perm_count_raw2011)
+perm_count_df2011 <- as.data.frame(perm_count_clean2011[[2]])
+perm_count_wide2011 <- as.data.frame(perm_count_df2011$properties)
 
 # GET the SAMPLE stations count database using the API for 2014 onwards ---- NEED TO ADD IN SAMPLE COUNTS
-sam_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_sample%20where%20year%20%3E%3D%202011",
+sam_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_sample%20where%20year%20%3D%202011",
                      verbose(), 
                      encode="json", 
                      add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
