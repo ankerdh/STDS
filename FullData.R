@@ -64,8 +64,7 @@ station.locations.1818 <- station.locations %>%
   filter(row_number() %in% 1801:1818)
 
 
-
-#create function to calculate distance by road to Sydney Tower - THIS NEEDS TO BE MOVED UP TO INITIAL STATIONS GET
+# Create function to calculate distance by road to Sydney Tower
 get.distance <- function(x,y,z) {
   results = gmapsdistance(
     origin = paste(x,y,sep=","), 
@@ -101,7 +100,6 @@ saveRDS(stations,file= "SecretFile.rds")
 # Open this instead 
 stations <- read_rds("/Users/RohanDanisCox/STDS/SecretFile.rds") # need to change to your location
 
-
 getloc_key<- function(year,month){
   url<- paste("http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?apikey=HNyjZnlRykmDQLvWoyCOc460vyjPg9dJ&q=",lat,"%2C",long,"&details=true",sep="")
   bomgetkey<-GET(url)
@@ -113,9 +111,9 @@ getloc_key<- function(year,month){
 #call the function to get location key for the geocoordinates
 getloc_key(-33,151)
 
-##### THIS SHOULD WORK
-year <- 2011:2012
-month <- 1:2
+# Cycle through each month and store in perm_count_wide
+year <- 2011:2016
+month <- 1:12
 perm_count_wide <-data.frame()
 for(i in year) {
     for (j in month){
@@ -130,7 +128,7 @@ for(i in year) {
       perm_count_wide <- rbind(perm_count_wide,perm_count_df$properties)
     }}
 
-##### THIS SHOULD WORK
+# Cycle through each month and store in samp_count_wide
 samp_count_wide <-data.frame()
 for(i in year) {
   for (j in month){
@@ -145,34 +143,8 @@ for(i in year) {
     samp_count_wide <- rbind(samp_count_wide,samp_count_df$properties)
   }}
 
-
-# GET the PERMANENT stations count database using the API for 2011 onwards ---- NEED TO ADD IN SAMPLE COUNTS
-perm_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3D2011",
-                verbose(), 
-                encode="json", 
-                add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
-
-
-# Extract a clean counts dataframe from the raw API output
-perm_count_api2011$status_code
-perm_count_raw2011 <- rawToChar(perm_count_api2011$content)
-perm_count_clean2011 <- fromJSON(perm_count_raw2011)
-perm_count_df2011 <- as.data.frame(perm_count_clean2011[[2]])
-perm_count_wide2011 <- as.data.frame(perm_count_df2011$properties)
-
-# GET the SAMPLE stations count database using the API for 2014 onwards ---- NEED TO ADD IN SAMPLE COUNTS
-sam_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_sample%20where%20year%20%3D%202011",
-                     verbose(), 
-                     encode="json", 
-                     add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
-
-# Extract a clean counts dataframe from the raw API output
-sam_count_api$status_code
-sam_count_raw <- rawToChar(sam_count_api$content)
-sam_count_clean <- fromJSON(sam_count_raw)
-sam_count_df <- as.data.frame(sam_count_clean[[2]])
-sam_count_wide <- as.data.frame(sam_count_df$properties)
-
+# combine the permanent stations with the sample stations
+count_wide <- rbind(perm_count_wide,samp_count_wide)
 
 # add the a monthly day count
 count_wide <- count_wide%>%
@@ -223,6 +195,12 @@ traffic_vol_small$classification_seq <- factor(traffic_vol_small$classification_
 traffic_vol_small$traffic_direction_seq <- factor(traffic_vol_small$traffic_direction_seq,levels=c(0,1,2),labels = c("COUNTER","PRESCRIBED","BOTH"))
 traffic_vol_small$cardinal_direction_seq <- factor(traffic_vol_small$cardinal_direction_seq,levels=c(1,3,5,7,9,10),labels = c("NORTH","EAST","SOUTH","WEST","NORTHBOUND AND SOUTHBOUND","EASTBOUND & WESTBOUND"))
 traffic_vol_small$day_of_week <- factor(traffic_vol_small$day_of_week,levels=c(1,2,3,4,5,6,7),labels = c("MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"))
+
+# Store the completed file as an RDS
+saveRDS(traffic_vol_small,file= "traffic_vol_small.rds")
+
+# Retrieve Data
+traffic_vol_small <- read_rds("/Users/RohanDanisCox/STDS/traffic_vol_small.rds") # need to change to your location
 
 #read in selected variables from the ABS table ABS_REGIONAL_LGA
 LGAurl <- "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_REGIONAL_LGA/ERP_18+ERP_21+ERP_6+200IND+MVC_14+MVC_15+MVC_16+MVC_17+MVC_18+MVC_19+MVC_20+MVC_21+MVC_22+MVC_38+CABEE_36+CABEE_35+INCOME_17+LAND.LGA2014..A/all?startTime=2011&endTime=2016&format=compact_v2"
@@ -277,42 +255,7 @@ LGA.wide$density.total.businesses <- LGA.wide$total.businesses / LGA.wide$lga.ar
 LGA.wide <- LGA.wide[,c("lga","year","lga.area.2014","pop.density","pop.work.age.percent","pop.school.age.percent","density.vehicles.light","density.vehicles.heavy","density.transport.businesses","density.total.businesses","median.income")]
 
 #left join to add ABS data for LGA/Year to each row of traffic data
-
-#<<<<<<< HEAD
-###   NOTE  NOTE   NOTE  #######just joins to a SUBSET for now, not the full traffic dataset
-traffic_vol_test<- traffic_vol_small[seq(1, 90000, by = 6500),]
-#=======
-###   NOTE  NOTE   NOTE  #######just a TEST for now, not the full traffic dataset
-traffic_vol_test<- traffic_vol_small[seq(1, 10, by = 1),]
-#>>>>>>> 2d29d6870c98b0a813b44eec053e105e4cd9f551
-traffic.with.abs <- merge(x = traffic_vol_test, y = LGA.wide, by = c("lga", "year"), all.x = TRUE)
-
-#now calculate distance from Sydney CBD for each station
-
-#make list of stations
-###   NOTE  NOTE   NOTE  #######just a SUBSET for now, not the full traffic dataset
-station.locations <- unique(traffic_vol_test[,c("station_key","wgs84_latitude","wgs84_longitude")])
-
-#create function to calculate distance by road to Sydney Tower - THIS NEEDS TO BE MOVED UP TO INITIAL STATIONS GET
-get.distance <- function(x,y,z) {
-  results = gmapsdistance(
-    origin = paste(x,y,sep=","), 
-    destination = "-33.8704512,151.2058792", 
-    mode = "driving", 
-    traffic_model = "best_guess",
-    shape = "long",
-    key = "AIzaSyDDihK34ya701nYseOdUXLDwH7XWfYMuC0")
-  results.df<-data.frame(results)
-  results.df$station_key <- z
-  results.df
-}
-
-#calculate distance for each station
-distance.df <- get.distance(station.locations$wgs84_latitude,station.locations$wgs84_longitude, station.locations$station_key)
-distances.table <- distance.df[,c("station_key", "Distance.Distance")]
-
-#add to the traffic table
-traffic.with.abs <- merge(x = traffic.with.abs, y = distances.table, by = "station_key", all.x = TRUE)
+traffic.with.abs <- merge(x = traffic_vol_small, y = LGA.wide, by = c("lga", "year"), all.x = TRUE)
 
 # Test modelling
 Model <- lm(count~lane_count + pop.density + day_of_week + road_functional_hierarchy ,data = traffic.with.abs)
@@ -326,4 +269,3 @@ summary(Model)
 # 4) Interpret modelling
 ################################################
 
-check <- unique(count$station_key)
