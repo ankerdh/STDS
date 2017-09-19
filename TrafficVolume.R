@@ -113,9 +113,10 @@ getloc_key<- function(year,month){
 #call the function to get location key for the geocoordinates
 getloc_key(-33,151)
 
-##### THIS DOESN'T WORK YET BUT HOPEFULLY SOON
-year <- 2011:2016
-month <- 1:12
+##### THIS SHOULD WORK
+year <- 2011:2012
+month <- 1:2
+perm_count_wide <-data.frame()
 for(i in year) {
     for (j in month){
       url<- paste("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3D%20",i,"%20and%20month%20%3D%20",j,"%20",sep="")
@@ -126,8 +127,24 @@ for(i in year) {
       perm_count_raw <- rawToChar(perm_count_api$content)
       perm_count_clean <- fromJSON(perm_count_raw)
       perm_count_df <- as.data.frame(perm_count_clean[[2]])
-      perm_count_wide <- as.data.frame(perm_count_df$properties)
+      perm_count_wide <- rbind(perm_count_wide,perm_count_df$properties)
     }}
+
+##### THIS SHOULD WORK
+samp_count_wide <-data.frame()
+for(i in year) {
+  for (j in month){
+    url<- paste("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_sample%20where%20year%20%3D%20'",i,"'%20and%20month%20%3D%20'",j,"'",sep="")
+    samp_count_api <- GET(url,
+                          verbose(),
+                          encode="json",
+                          add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
+    samp_count_raw <- rawToChar(samp_count_api$content)
+    samp_count_clean <- fromJSON(samp_count_raw)
+    samp_count_df <- as.data.frame(samp_count_clean[[2]])
+    samp_count_wide <- rbind(samp_count_wide,samp_count_df$properties)
+  }}
+
 
 # GET the PERMANENT stations count database using the API for 2011 onwards ---- NEED TO ADD IN SAMPLE COUNTS
 perm_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3D2011",
