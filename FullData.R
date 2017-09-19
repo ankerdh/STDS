@@ -128,6 +128,9 @@ for(i in year) {
       perm_count_wide <- rbind(perm_count_wide,perm_count_df$properties)
     }}
 
+# Store the compiled file as an RDS
+saveRDS(perm_count_wide,file="perm_count_wide.rds")
+
 # Cycle through each month and store in samp_count_wide
 samp_count_wide <-data.frame()
 for(i in year) {
@@ -143,6 +146,11 @@ for(i in year) {
     samp_count_wide <- rbind(samp_count_wide,samp_count_df$properties)
   }}
 
+# Seems abnormally low at only 35,597 rows but I checked this by running the full time period (237,000) rows
+# and then subsetting to only 2011 onwward which pulled up the exact same amount. I then riffled through
+# the data to eye test it and it does appear as though the vast majority of sample stations were taken 
+# before 2011. This makes intuitive sense in that increased tech would make permanent stations easier.
+
 # combine the permanent stations with the sample stations
 count_wide <- rbind(perm_count_wide,samp_count_wide)
 
@@ -150,17 +158,22 @@ count_wide <- rbind(perm_count_wide,samp_count_wide)
 count_wide <- count_wide%>%
   mutate(day=mday(date))
 
-# gather the hourly counts into a single column by hour
-count <-gather(count_wide,key=hour,value=count,hour_00:hour_23)
-count$hour <- gsub("hour_","", count$hour)
-count$hour <- as.numeric(count$hour)
+# Fix station_key to be an integer ready for merging
+count_wide$station_key <- as.integer(count_wide$station_key)
 
 # Merge the two tables using the key identifier of Station key - inner join returns where a match is found
-traffic_vol <- inner_join(stations,count,by = "station_key") #lost 400 or so observations
+traffic_vol <- inner_join(count_wide,stations,by = "station_key") #lost 4000 or so observations
+
+# Store the traffic_vol file as an RDS
+saveRDS(traffic_vol,file= "traffic_vol.rds")
+
+####START HERE 
+# Retrieve Data
+traffic_vol <- read_rds("/Users/RohanDanisCox/STDS/traffic_vol.rds") # need to change to your location
 
 # select the variables of interest in the dataframe (exclude unnecessary variables)
 names(traffic_vol)
-traffic_vol_small <- traffic_vol %>%
+traffic_vol_small <- traffic_vol %>% # this has been commented out for now as it need to resolve issue with gathering too early
   select(station_key,
          full_name,
          road_functional_hierarchy,
@@ -196,11 +209,11 @@ traffic_vol_small$traffic_direction_seq <- factor(traffic_vol_small$traffic_dire
 traffic_vol_small$cardinal_direction_seq <- factor(traffic_vol_small$cardinal_direction_seq,levels=c(1,3,5,7,9,10),labels = c("NORTH","EAST","SOUTH","WEST","NORTHBOUND AND SOUTHBOUND","EASTBOUND & WESTBOUND"))
 traffic_vol_small$day_of_week <- factor(traffic_vol_small$day_of_week,levels=c(1,2,3,4,5,6,7),labels = c("MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"))
 
-# Store the completed file as an RDS
-saveRDS(traffic_vol_small,file= "traffic_vol_small.rds")
-
-# Retrieve Data
-traffic_vol_small <- read_rds("/Users/RohanDanisCox/STDS/traffic_vol_small.rds") # need to change to your location
+# gather the hourly counts into a single column by hour - note this makes the file exceptionally large. 
+# I will move this to the final step since
+count <-gather(count_wide,key=hour,value=count,hour_00:hour_23)
+count$hour <- gsub("hour_","", count$hour)
+count$hour <- as.numeric(count$hour)
 
 #read in selected variables from the ABS table ABS_REGIONAL_LGA
 LGAurl <- "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_REGIONAL_LGA/ERP_18+ERP_21+ERP_6+200IND+MVC_14+MVC_15+MVC_16+MVC_17+MVC_18+MVC_19+MVC_20+MVC_21+MVC_22+MVC_38+CABEE_36+CABEE_35+INCOME_17+LAND.LGA2014..A/all?startTime=2011&endTime=2016&format=compact_v2"
