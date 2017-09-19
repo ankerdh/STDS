@@ -102,6 +102,7 @@ saveRDS(stations,file= "SecretFile.rds")
 stations <- read_rds("/Users/RohanDanisCox/STDS/SecretFile.rds") # need to change to your location
 
 
+<<<<<<< HEAD
 getloc_key<- function(year,month){
   url<- paste("http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?apikey=HNyjZnlRykmDQLvWoyCOc460vyjPg9dJ&q=",lat,"%2C",long,"&details=true",sep="")
   bomgetkey<-GET(url)
@@ -117,6 +118,11 @@ getloc_key(-33,151)
 year <- 2011:2012
 month <- 1:2
 perm_count_wide <-data.frame()
+=======
+##### This is working now .Hopefuly it meets our requirements:JAY
+year <- 2006:2006
+month <- 1:1
+>>>>>>> e6de2f0437c04826bee350ef1d908b1e61c529ec
 for(i in year) {
     for (j in month){
       url<- paste("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3D%20",i,"%20and%20month%20%3D%20",j,"%20",sep="")
@@ -127,8 +133,17 @@ for(i in year) {
       perm_count_raw <- rawToChar(perm_count_api$content)
       perm_count_clean <- fromJSON(perm_count_raw)
       perm_count_df <- as.data.frame(perm_count_clean[[2]])
+<<<<<<< HEAD
       perm_count_wide <- rbind(perm_count_wide,perm_count_df$properties)
     }}
+=======
+      perm_count_prop <- as.data.frame(perm_count_df$properties)
+      #creating a variable name to assign to
+      nam <- paste("perm_count_wide",i,j,sep="")
+      #assign the value to variable created in the above step
+      assign(nam,perm_count_prop)
+  }}
+>>>>>>> e6de2f0437c04826bee350ef1d908b1e61c529ec
 
 ##### THIS SHOULD WORK
 samp_count_wide <-data.frame()
