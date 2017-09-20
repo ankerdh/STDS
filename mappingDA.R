@@ -30,3 +30,4 @@ syd +
   geom_point(aes(x=lon, y=lat), data=incidents.df, colour="red", size=3) +
   geom_point(aes(x=lon, y=lat), data=roadwork.df, colour="darkorange", size=3) +
   ggtitle("Traffic incidents, roadwork and major events")
+
