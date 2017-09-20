@@ -167,53 +167,18 @@ traffic_vol <- inner_join(count_wide,stations,by = "station_key") #lost 4000 or 
 # Store the traffic_vol file as an RDS
 saveRDS(traffic_vol,file= "traffic_vol.rds")
 
-####START HERE 
 # Retrieve Data
 traffic_vol <- read_rds("/Users/RohanDanisCox/STDS/traffic_vol.rds") # need to change to your location
-
-# select the variables of interest in the dataframe (exclude unnecessary variables)
-names(traffic_vol)
-traffic_vol_small <- traffic_vol %>% # this has been commented out for now as it need to resolve issue with gathering too early
-  select(station_key,
-         full_name,
-         road_functional_hierarchy,
-         road_classification_type,
-         lane_count,
-         classification_seq,
-         rms_region,
-         lga,
-         suburb,
-         post_code,
-         device_type,
-         wgs84_latitude,
-         wgs84_longitude,
-         traffic_direction_seq,
-         cardinal_direction_seq,
-         year,
-         month,
-         day,
-         day_of_week,
-         public_holiday,
-         school_holiday,
-         daily_total,
-         hour,
-         count)
 
 ## classification_seq = 0: UNCLASSIFIED 1: ALL VEHICLES 2: LIGHT VEHICLES 3: HEAVY VEHICLES -9: MISSING    
 ## traffic_direction_seq = 0: COUNTER 1: PRESCRIBED 2: BOTH -- not sure if this is needed
 ## cardinal_direction_seq = 1: NORTH 3: EAST 5: SOUTH 7: WEST 9: NORTHBOUND AND SOUTHBOUND 10: EASTBOUND AND WESTBOUND
 
 ## update factors based on above characteristics
-traffic_vol_small$classification_seq <- factor(traffic_vol_small$classification_seq,levels=c(0,1,2,3,-9),labels = c("UNCLASSIFIED","ALL VEHICLES","LIGHT VEHICLES","HEAVY VEHICLES","MISSING"))
-traffic_vol_small$traffic_direction_seq <- factor(traffic_vol_small$traffic_direction_seq,levels=c(0,1,2),labels = c("COUNTER","PRESCRIBED","BOTH"))
-traffic_vol_small$cardinal_direction_seq <- factor(traffic_vol_small$cardinal_direction_seq,levels=c(1,3,5,7,9,10),labels = c("NORTH","EAST","SOUTH","WEST","NORTHBOUND AND SOUTHBOUND","EASTBOUND & WESTBOUND"))
-traffic_vol_small$day_of_week <- factor(traffic_vol_small$day_of_week,levels=c(1,2,3,4,5,6,7),labels = c("MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"))
-
-# gather the hourly counts into a single column by hour - note this makes the file exceptionally large. 
-# I will move this to the final step since
-count <-gather(count_wide,key=hour,value=count,hour_00:hour_23)
-count$hour <- gsub("hour_","", count$hour)
-count$hour <- as.numeric(count$hour)
+traffic_vol$classification_seq <- factor(traffic_vol$classification_seq,levels=c(0,1,2,3,-9),labels = c("UNCLASSIFIED","ALL VEHICLES","LIGHT VEHICLES","HEAVY VEHICLES","MISSING"))
+traffic_vol$traffic_direction_seq <- factor(traffic_vol$traffic_direction_seq,levels=c(0,1,2),labels = c("COUNTER","PRESCRIBED","BOTH"))
+traffic_vol$cardinal_direction_seq <- factor(traffic_vol$cardinal_direction_seq,levels=c(1,3,5,7,9,10),labels = c("NORTH","EAST","SOUTH","WEST","NORTHBOUND AND SOUTHBOUND","EASTBOUND & WESTBOUND"))
+traffic_vol$day_of_week <- factor(traffic_vol$day_of_week,levels=c(1,2,3,4,5,6,7),labels = c("MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"))
 
 #read in selected variables from the ABS table ABS_REGIONAL_LGA
 LGAurl <- "http://stat.data.abs.gov.au/restsdmx/sdmx.ashx/GetData/ABS_REGIONAL_LGA/ERP_18+ERP_21+ERP_6+200IND+MVC_14+MVC_15+MVC_16+MVC_17+MVC_18+MVC_19+MVC_20+MVC_21+MVC_22+MVC_38+CABEE_36+CABEE_35+INCOME_17+LAND.LGA2014..A/all?startTime=2011&endTime=2016&format=compact_v2"
@@ -242,8 +207,6 @@ LGA_full$label.en <- gsub(" \\(.*$","", LGA_full$label.en)
 land.area.2014 <- LGA_full[LGA_full$MEASURE=="LAND",c("REGION","OBS_VALUE")]
 LGA_full <- merge(x = LGA_full, y = land.area.2014, by = "REGION", all.x = TRUE)
 
-#Check INCOME_17 aka median.income as it may not be available all years?
-
 #make a wide table
 LGA.wide <- dcast(LGA_full, REGION + label.en + TIME + OBS_VALUE.y ~ MEASURE, value.var = c("OBS_VALUE.x"))
 
@@ -268,7 +231,141 @@ LGA.wide$density.total.businesses <- LGA.wide$total.businesses / LGA.wide$lga.ar
 LGA.wide <- LGA.wide[,c("lga","year","lga.area.2014","pop.density","pop.work.age.percent","pop.school.age.percent","density.vehicles.light","density.vehicles.heavy","density.transport.businesses","density.total.businesses","median.income")]
 
 #left join to add ABS data for LGA/Year to each row of traffic data
-traffic.with.abs <- merge(x = traffic_vol_small, y = LGA.wide, by = c("lga", "year"), all.x = TRUE)
+traffic.with.abs <- merge(x = traffic_vol, y = LGA.wide, by = c("lga", "year"), all.x = TRUE)
+traffic_with_abs <- traffic.with.abs
+
+# Store the traffic.with.abs file as an RDS
+saveRDS(traffic.with.abs,file= "traffic_with_abs.rds")
+
+# Retrieve Data
+traffic_with_abs <- read_rds("/Users/RohanDanisCox/STDS/traffic_with_abs.rds") # need to change to your location
+
+# select the variables of interest in the dataframe (exclude unnecessary variables)
+names(traffic_with_abs)
+traffic_with_abs_thin <- traffic_with_abs %>%
+  select(station_key, 
+         full_name, 
+         road_functional_hierarchy,
+         mab_way_type,
+         road_classification_admin,
+         lane_count,
+         cardinal_direction_seq,
+         classification_seq,
+         rms_region,
+         lga,
+         suburb,
+         post_code,
+         device_type,
+         permanent_station,
+         wgs84_latitude,
+         wgs84_longitude,
+         year,
+         month,
+         day,
+         day_of_week,
+         public_holiday,
+         school_holiday,
+         Distance_CBD,
+         nearest_weather_station,
+         lat,
+         lon,
+         pop.density,
+         pop.work.age.percent,
+         pop.school.age.percent,
+         density.vehicles.light,
+         density.vehicles.heavy,
+         daily_total,
+         hour_00,
+         hour_01,
+         hour_02,
+         hour_03,
+         hour_04,
+         hour_05,
+         hour_06,
+         hour_07,
+         hour_08,
+         hour_09,
+         hour_10,
+         hour_11,
+         hour_12,
+         hour_13,
+         hour_14,
+         hour_15,
+         hour_16,
+         hour_17,
+         hour_18,
+         hour_19,
+         hour_20,
+         hour_21,
+         hour_22,
+         hour_23)
+
+# Store the traffic.with.abs file as an RDS
+saveRDS(traffic_with_abs_thin,file= "traffic_with_abs_thin.rds")
+
+# gather the hourly counts into a single column by hour - note this makes the file exceptionally large. 
+# I will move this to the final step since
+traffic_with_abs_long <-gather(traffic_with_abs,key=hour,value=count,hour_00:hour_23)
+traffic_with_abs$hour <- gsub("hour_","", traffic_with_abs_long$hour)
+traffic_with_abs$hour <- as.numeric(traffic_with_abs_long$hour)
+
+# merge the two data sets
+traffic_with_abs$ymd <- gsub("T00:00:00Z","", traffic_with_abs$date)
+traffic_with_abs$ymd <- ymd(traffic_with_abs$ymd)
+BOMrain$hour <- gsub('.{3}$', '',BOMrain$ymd)
+BOMrain$hour <- as.integer(BOMrain$hour)
+test <- inner_join(traffic_with_abs,BOMrain,by=c("nearest_weather_station"="Station.Number","ymd"="Day.Month.Year.in.DD.MM.YYYY.format","hour"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##### Can ignore below here
+
+saveRDS(test,file= "test.rds")
+
+# sample for testing weather merge
+traffic_with_abs_sample<- traffic.with.abs[seq(1, 1000000, by = 5000),]
+
+# gather the hourly counts into a single column by hour - note this makes the file exceptionally large. 
+# I will move this to the final step since
+traffic_with_abs_sample <-gather(traffic_with_abs_sample,key=hour,value=count,hour_00:hour_23)
+traffic_with_abs_sample$hour <- gsub("hour_","", traffic_with_abs_sample$hour)
+traffic_with_abs_sample$hour <- as.numeric(traffic_with_abs_sample$hour)
+
+# select the variables of interest in the dataframe (exclude unnecessary variables)
+names(traffic_with_abs_sample)
+traffic_with_abs_sample$datecheck <- gsub("T00:00:00Z","", traffic_with_abs_sample$date)
+traffic_with_abs_sample$datecheck <- ymd(traffic_with_abs_sample$datecheck)
+
+# Store the traffic_vol file as an RDS
+saveRDS(traffic_with_abs_sample,file= "traffic_with_abs_sample.rds")
+names(BOMrain)
+traffic_with_abs_sample <- rename(traffic_with_abs_sample,"Day.Month.Year.in.DD.MM.YYYY.format"="datecheck")
+BOMrain$hour <- gsub('.{3}$', '',BOMrain$Hour24.Minutes..in.HH24.MI.format.in.Local.standard.time)
+BOMrain$hour <- as.integer(BOMrain$hour)
+BOMrain$nearest_weather_station <- BOMrain$Station.Number
+test <- inner_join(traffic_with_abs_sample,BOMrain,by=c("nearest_weather_station","Day.Month.Year.in.DD.MM.YYYY.format","hour"))
 
 # Test modelling
 Model <- lm(count~lane_count + pop.density + day_of_week + road_functional_hierarchy ,data = traffic.with.abs)
