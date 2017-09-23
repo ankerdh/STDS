@@ -26,11 +26,25 @@ ggplot(data) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 #pair plots to look for relationships, data issues
-pairs_data <- data[,c("daily_total", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light")]
+pairs_data <- data[,c("daily_total", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light")]
 pairs_data[,] <- as.numeric(unlist(pairs_data[,]))
 pairs_data_small <- sample_n(pairs_data, 10000)
-
 pairs(pairs_data_small)
+
+#Sydney Region only
+data_Sydney <- data[data$rms_region=="Sydney",]
+data_Sydney$density_workers <- data_Sydney$pop.density * data_Sydney$pop.work.age.percent / 100
+
+#pairs in Sydney
+pairs_data_Sydney <- data_Sydney[,c("daily_total", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "density_workers", "pop.school.age.percent", "density.vehicles.light")]
+pairs_data_Sydney[,] <- as.numeric(unlist(pairs_data_Sydney[,]))
+pairs_data_Sydney_small <- sample_n(pairs_data_Sydney, 10000)
+pairs(pairs_data_Sydney_small)
+
+#correlations in Sydney region
+library(polycor)
+pairs_data_Sydney <- as.data.frame(pairs_data_Sydney)
+hetcor(pairs_data_Sydney)
 
 # do we have a bunch of missing data, 
 #and WTF at April 2015 where the median daily observations per station dropped significantly
