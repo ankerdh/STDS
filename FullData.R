@@ -317,6 +317,25 @@ data$mab_way_type <- as.factor(data$mab_way_type)
 data$road_functional_hierarchy <- as.factor(data$road_functional_hierarchy)
 data$road_functional_hierarchy <- trim(data$road_functional_hierarchy)
 
+# Fixing up duplicates
+data <- data %>%
+  distinct(station_key,year,month,day,cardinal_direction_seq,classification_seq,.keep_all = TRUE)
+
+# Removing impact of classification
+data <- data %>% 
+  group_by(station_key,full_name,road_functional_hierarchy,mab_way_type,road_classification_admin,
+           lane_count,cardinal_direction_seq,rms_region,lga,suburb,post_code,device_type,permanent_station,
+           wgs84_latitude,wgs84_longitude,year,month,day,day_of_week,public_holiday,school_holiday,
+           Distance_CBD,nearest_weather_station,lat,lon,pop.density,pop.work.age.percent,
+           pop.school.age.percent,density.vehicles.light,density.vehicles.heavy) %>%
+  summarise(hour_01= sum(hour_01),hour_02= sum(hour_02),hour_03= sum(hour_03),hour_04= sum(hour_04),
+            hour_05= sum(hour_05),hour_06= sum(hour_06),hour_07= sum(hour_07),hour_08= sum(hour_08),
+            hour_09= sum(hour_09),hour_10= sum(hour_10),hour_11= sum(hour_11),hour_12= sum(hour_12),
+            hour_13= sum(hour_13),hour_14= sum(hour_14),hour_15= sum(hour_15),hour_16= sum(hour_16),
+            hour_17= sum(hour_17),hour_18= sum(hour_18),hour_19= sum(hour_19),hour_20= sum(hour_20),
+            hour_21= sum(hour_21),hour_22= sum(hour_22),hour_23= sum(hour_23),
+            daily_total=sum(daily_total))
+
 # Store the traffic.with.abs file as an RDS
 saveRDS(data,file= "FullData.rds")
 
