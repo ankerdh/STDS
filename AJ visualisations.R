@@ -16,6 +16,9 @@ str(data)
 data$rms_region <- ordered(data$rms_region, levels = c("Sydney", "Hunter", "Northern", "Southern", "South West", "Western"))
 data$road_functional_hierarchy <- ordered(data$road_functional_hierarchy, levels = c("Motorway", "Primary Road", "Arterial Road", "Sub-Arterial Road", "Distributor Road", "Local Road"))
 
+#remove the one station that has no geography
+data <- data[data$station_key != 18479663,]
+
 #boxplot to show the variability of daily counts in different regions and road types
 ggplot(data) +
   geom_boxplot(aes(y=daily_total,x=road_functional_hierarchy)) + 
