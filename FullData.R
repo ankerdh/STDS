@@ -10,6 +10,8 @@ library(gmapsdistance)
 library(sqldf)
 library(tictoc)
 library(RDS)
+library(scales)
+library(gdata)
 
 # GET the full stations database using the API
 stations_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_station_reference%20",
@@ -313,6 +315,7 @@ data$lane_count <- as.factor(data$lane_count)
 data$road_classification_admin <- as.factor(data$road_classification_admin)
 data$mab_way_type <- as.factor(data$mab_way_type)
 data$road_functional_hierarchy <- as.factor(data$road_functional_hierarchy)
+traffic_vol$road_functional_hierarchy <- trim(traffic_vol$road_functional_hierarchy)
 
 # Store the traffic.with.abs file as an RDS
 saveRDS(data,file= "FullData.rds")
