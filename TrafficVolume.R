@@ -162,7 +162,7 @@ for(i in year) {
 
 
 # GET the PERMANENT stations count database using the API for 2011 onwards ---- NEED TO ADD IN SAMPLE COUNTS
-perm_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3D2011",
+perm_count_api2011<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_permanent%20where%20year%20%3D2011",
                 verbose(), 
                 encode="json", 
                 add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
@@ -176,7 +176,7 @@ perm_count_df2011 <- as.data.frame(perm_count_clean2011[[2]])
 perm_count_wide2011 <- as.data.frame(perm_count_df2011$properties)
 
 # GET the SAMPLE stations count database using the API for 2014 onwards ---- NEED TO ADD IN SAMPLE COUNTS
-sam_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_sample%20where%20year%20%3D%202011",
+sam_count_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_hourly_sample%20",
                      verbose(), 
                      encode="json", 
                      add_headers(`Authorization` = "apikey fUa8N1LC42AYtVDKIt6jbAzQXFPcf9b31GYv"))
@@ -341,4 +341,4 @@ summary(Model)
 # 4) Interpret modelling
 ################################################
 
-check <- unique(count$station_key)
+check <- unique(samp_count_wide$station_key)
