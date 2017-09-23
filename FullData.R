@@ -23,11 +23,15 @@ stations_clean <- fromJSON(stations_raw)
 stations_df <- as.data.frame(stations_clean[[2]])
 stations <- as.data.frame(stations_df$properties)
 
+saveRDS(stations,file= "Stations-initial.rds")
+
 # compare each station location to BOM weather stations and choose closest (SOME ARE WRONG!)
-BOMrain <- read_rds("/Users/RohanDanisCox/STDS/BOM_NSW_rain.RDS") # need to change to your location
-BOMrainStation <- data.frame(subset(BOMrain, select = c(1,2, 5,6))) ### WHAT DOES THIS DO?
+BOMrain <- read_rds("/Users/RohanDanisCox/STDS/BOMNSW.RDS") # need to change to your location
+BOMrainStation <- data.frame(subset(BOMrain, select = c(1,2,4,5)))
 colnames(BOMrainStation) <- c("StationNum","name", "lat", "lon")
 UniqueBOMStations <- sqldf('SELECT DISTINCT * FROM BOMrainStation') 
+
+saveRDS(UniqueBOMStations,file= "UniqueBOMStations.rds")
 
 # create distance matrix
 DistMatrix <- distm(stations[,c('wgs84_longitude','wgs84_latitude')], UniqueBOMStations[,c('lon','lat')], fun=distVincentyEllipsoid)/1000
@@ -39,6 +43,8 @@ UniqueNearestStation<-unique(NearestStation)
 # Combine with traffic stations information
 stations$nearest_weather_station <- NearestStation$UniqueBOMStations.StationNum.max.col..DistMatrix..
 stations <- inner_join(stations, UniqueBOMStations,c("nearest_weather_station" = "StationNum"))
+
+saveRDS(stations,file= "StationsAndWeather.rds")
 
 #### Distance to City --- DO NOT USE THIS SHIT----
 station.locations <- stations[,c("station_key","wgs84_latitude","wgs84_longitude")]
@@ -61,7 +67,7 @@ station.locations.1600 <- station.locations %>%
 station.locations.1800 <- station.locations %>%
   filter(row_number() %in% 1601:1800)
 station.locations.1818 <- station.locations %>%
-  filter(row_number() %in% 1801:1818)
+  filter(row_number() %in% 1801:1823)
 
 
 # Create function to calculate distance by road to Sydney Tower
@@ -72,14 +78,13 @@ get.distance <- function(x,y,z) {
     mode = "driving", 
     traffic_model = "best_guess",
     shape = "long",
-    key = "AIzaSyBlcTlunVo6Zmc2P2i98dwwlNPEKjKFouk")
+    key = "AIzaSyCwoq2tqj0RX54SrVnnRYccCs6AV1kHj34")
   results.df<-data.frame(results)
   results.df$station_key <- z
   results.df
 }
 
 #calculate distance for each station
-tic() 
 distance.df200 <- get.distance(station.locations.200$wgs84_latitude,station.locations.200$wgs84_longitude, station.locations.200$station_key)
 distance.df400 <- get.distance(station.locations.400$wgs84_latitude,station.locations.400$wgs84_longitude, station.locations.400$station_key)
 distance.df600 <- get.distance(station.locations.600$wgs84_latitude,station.locations.600$wgs84_longitude, station.locations.600$station_key)
@@ -90,26 +95,15 @@ distance.df1400 <- get.distance(station.locations.1400$wgs84_latitude,station.lo
 distance.df1600 <- get.distance(station.locations.1600$wgs84_latitude,station.locations.1600$wgs84_longitude, station.locations.1600$station_key)
 distance.df1800 <- get.distance(station.locations.1800$wgs84_latitude,station.locations.1800$wgs84_longitude, station.locations.1800$station_key)
 distance.df1818 <- get.distance(station.locations.1818$wgs84_latitude,station.locations.1818$wgs84_longitude, station.locations.1818$station_key)
-check <- rbind(distance.df200,distance.df400,distance.df600,distance.df800,distance.df1000,distance.df1200,distance.df1400,distance.df1600,distance.df1800,distance.df1818)
+combine <- rbind(distance.df200,distance.df400,distance.df600,distance.df800,distance.df1000,distance.df1200,distance.df1400,distance.df1600,distance.df1800,distance.df1818)
 
-distances.table <- check[,c("station_key", "Distance.Distance")]
+distances.table <- combine[,c("station_key", "Distance.Distance")]
 stations <- inner_join(stations,distances.table,by="station_key")
 stations <- rename(stations,"Distance_CBD" ="Distance.Distance")
-saveRDS(stations,file= "SecretFile.rds")
+saveRDS(stations,file= "StationsWeatherAndDistance.rds")
 
 # Open this instead 
-stations <- read_rds("/Users/RohanDanisCox/STDS/SecretFile.rds") # need to change to your location
-
-getloc_key<- function(year,month){
-  url<- paste("http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?apikey=HNyjZnlRykmDQLvWoyCOc460vyjPg9dJ&q=",lat,"%2C",long,"&details=true",sep="")
-  bomgetkey<-GET(url)
-  bomgetkey$status_code
-  location_raw<-rawToChar(bomgetkey$content)
-  location_cln <-fromJSON(location_raw,simplifyDataFrame = TRUE)
-  location_key <-location_clean$Key
-}
-#call the function to get location key for the geocoordinates
-getloc_key(-33,151)
+stations <- read_rds("/Users/RohanDanisCox/STDS/StationsWeatherAndDistance.rds") # need to change to your location
 
 # Cycle through each month and store in perm_count_wide
 year <- 2011:2016
@@ -162,7 +156,7 @@ count_wide <- count_wide%>%
 count_wide$station_key <- as.integer(count_wide$station_key)
 
 # Merge the two tables using the key identifier of Station key - inner join returns where a match is found
-traffic_vol <- inner_join(count_wide,stations,by = "station_key") #lost 4000 or so observations
+traffic_vol <- inner_join(count_wide,stations,by = "station_key")
 
 # Store the traffic_vol file as an RDS
 saveRDS(traffic_vol,file= "traffic_vol.rds")
@@ -242,7 +236,7 @@ traffic_with_abs <- read_rds("/Users/RohanDanisCox/STDS/traffic_with_abs.rds") #
 
 # select the variables of interest in the dataframe (exclude unnecessary variables)
 names(traffic_with_abs)
-traffic_with_abs_thin <- traffic_with_abs %>%
+data <- traffic_with_abs %>%
   select(station_key, 
          full_name, 
          road_functional_hierarchy,
@@ -300,8 +294,28 @@ traffic_with_abs_thin <- traffic_with_abs %>%
          hour_22,
          hour_23)
 
+
+# Clean the variables
+str(data)
+data$daily_total <- as.integer(data$daily_total)
+data$Distance_CBD <- as.numeric(data$Distance_CBD)
+data$school_holiday[data$school_holiday == 0] <- FALSE
+data$school_holiday[data$school_holiday == 1] <- TRUE
+data$school_holiday <- as.factor(data$school_holiday)
+data$public_holiday[data$public_holiday == 0] <- FALSE
+data$public_holiday[data$public_holiday == 1] <- TRUE
+data$public_holiday <- as.factor(data$public_holiday)
+data$year <- as.integer(data$year)
+data$permanent_station <- as.factor(data$permanent_station)
+data$device_type <- as.factor(data$device_type)
+data$rms_region <- as.factor(data$rms_region)
+data$lane_count <- as.factor(data$lane_count)
+data$road_classification_admin <- as.factor(data$road_classification_admin)
+data$mab_way_type <- as.factor(data$mab_way_type)
+data$road_functional_hierarchy <- as.factor(data$road_functional_hierarchy)
+
 # Store the traffic.with.abs file as an RDS
-saveRDS(traffic_with_abs_thin,file= "traffic_with_abs_thin.rds")
+saveRDS(data,file= "FullData.rds")
 
 # gather the hourly counts into a single column by hour - note this makes the file exceptionally large. 
 # I will move this to the final step since
