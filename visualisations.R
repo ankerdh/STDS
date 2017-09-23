@@ -6,11 +6,18 @@ library(tidyr)
 library(ggplot2)
 library(ggmap)
 
-syd <- ggmap(get_googlemap(c(lon=151, lat=-33.9), zoom=8, maptype="roadmap", size=c(600,400)))
+NSW <- ggmap(get_googlemap(c(lon=147.5, lat=-32.8), zoom=6, maptype="roadmap", size=c(600,500)))
+
+NSW +
+  geom_point(aes(x=wgs84_longitude, y=wgs84_latitude), data=stations, colour="red", size=.3, alpha=0.5) +
+  geom_point(aes(x=lon, y=lat), data=stations, colour="blue", size=.5) +
+  ggtitle("Traffic counter and weather stations - NSW")
+
+syd <- ggmap(get_googlemap(c(lon=151, lat=-33.85), zoom=10, maptype="roadmap", size=c(600,400)))
 
 syd +
-  geom_point(aes(x=wgs84_longitude, y=wgs84_latitude), data=stations, colour="red", size=3) +
-  geom_point(aes(x=lon, y=lat), data=stations, colour="blue", size=4) +
+  geom_point(aes(x=wgs84_longitude, y=wgs84_latitude), data=stations, colour="red", size=.8,alpha=0.8) +
+  geom_point(aes(x=lon, y=lat), data=stations, colour="blue", size=2) +
   ggtitle("Traffic counter and weather stations - Sydney")
 
 ###'WAFFLE' CHART (THE ONE WITH ICONS)###
