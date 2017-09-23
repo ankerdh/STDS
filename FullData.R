@@ -315,10 +315,12 @@ data$lane_count <- as.factor(data$lane_count)
 data$road_classification_admin <- as.factor(data$road_classification_admin)
 data$mab_way_type <- as.factor(data$mab_way_type)
 data$road_functional_hierarchy <- as.factor(data$road_functional_hierarchy)
-traffic_vol$road_functional_hierarchy <- trim(traffic_vol$road_functional_hierarchy)
+data$road_functional_hierarchy <- trim(data$road_functional_hierarchy)
 
 # Store the traffic.with.abs file as an RDS
 saveRDS(data,file= "FullData.rds")
+
+data <- read_rds("/Users/RohanDanisCox/STDS/FullData.rds") # fix to your computer location
 
 # gather the hourly counts into a single column by hour - note this makes the file exceptionally large. 
 # I will move this to the final step since
