@@ -27,6 +27,7 @@ stations <- as.data.frame(stations_df$properties)
 
 saveRDS(stations,file= "Stations-initial.rds")
 
+
 # compare each station location to BOM weather stations and choose closest (SOME ARE WRONG!)
 BOMrain <- read_rds("/Users/RohanDanisCox/STDS/BOMNSW.RDS") # need to change to your location
 BOMrainStation <- data.frame(subset(BOMrain, select = c(1,2,4,5)))
@@ -339,81 +340,47 @@ data <- data %>%
 # Store the traffic.with.abs file as an RDS
 saveRDS(data,file= "FullData.rds")
 
-data <- read_rds("/Users/RohanDanisCox/STDS/FullData.rds") # fix to your computer location
+FullData <- read_rds("/Users/RohanDanisCox/STDS/FullData.rds") # fix to your computer location
 
-# gather the hourly counts into a single column by hour - note this makes the file exceptionally large. 
-# I will move this to the final step since
-traffic_with_abs_long <-gather(traffic_with_abs,key=hour,value=count,hour_00:hour_23)
-traffic_with_abs$hour <- gsub("hour_","", traffic_with_abs_long$hour)
-traffic_with_abs$hour <- as.numeric(traffic_with_abs_long$hour)
+# Adding in weather data
+BOMNSW <- read_rds("/Users/RohanDanisCox/STDS/BOMNSW.RDS")
+str(BOMNSW)
 
-# merge the two data sets
-traffic_with_abs$ymd <- gsub("T00:00:00Z","", traffic_with_abs$date)
-traffic_with_abs$ymd <- ymd(traffic_with_abs$ymd)
-BOMrain$hour <- gsub('.{3}$', '',BOMrain$ymd)
-BOMrain$hour <- as.integer(BOMrain$hour)
-test <- inner_join(traffic_with_abs,BOMrain,by=c("nearest_weather_station"="Station.Number","ymd"="Day.Month.Year.in.DD.MM.YYYY.format","hour"))
+BOMNSW$Date1<-dmy(BOMNSW$Day.Month.Year.in.DD.MM.YYYY.format)
+BOMNSW$Year1<-year(BOMNSW$Date1)
+BOMNSW$Month1<-month(BOMNSW$Date1)
+BOMNSW$Day1<-day(BOMNSW$Date1)
+BOMNSW$Key1<-paste(BOMNSW$Station.Number,"_",BOMNSW$Date1)
 
 
+# subset BOM file for relevant columns
+RainByDay <- data.frame(subset(BOMNSW, select = c(1,2,3,4,5,8,17,19,20,18,21)))
+colnames(RainByDay) <- c("StationNum","name", "Locality","lat", "lon", "rain","Year1","Month1", "Day1", "Date1","Key1")
 
+RainCount <- RainByDay %>%
+  group_by(Key1) %>%
+  mutate(DailyRain=sum(rain, na.rm = TRUE)) %>%
+  distinct(StationNum,name,Locality,lat,lon,Year1, Month1,Day1, Date1, DailyRain)
 
+FullData <- data
+str(FullData)
 
+FullData$date <- as.Date(with(FullData, paste(year, month, day,sep="-")), "%Y-%m-%d")
+FullData$Key1<-paste(FullData$nearest_weather_station,"_",FullData$date)
+FullDataRain<-merge(FullData,RainCount, by="Key1")
 
+saveRDS(FullDataRain,file= "FullDataRain.rds")
+names(FullDataRain)
 
+# fixing columns
+Check <- FullDataRain %>%
+  select(-c(Key1,hour_01:hour_23,StationNum:Date1)) %>%
+  select(c(station_key:wgs84_longitude,Distance_CBD,year:day,date,day_of_week:school_holiday,))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##### Can ignore below here
-
-saveRDS(test,file= "test.rds")
-
-# sample for testing weather merge
-traffic_with_abs_sample<- traffic.with.abs[seq(1, 1000000, by = 5000),]
-
-# gather the hourly counts into a single column by hour - note this makes the file exceptionally large. 
-# I will move this to the final step since
-traffic_with_abs_sample <-gather(traffic_with_abs_sample,key=hour,value=count,hour_00:hour_23)
-traffic_with_abs_sample$hour <- gsub("hour_","", traffic_with_abs_sample$hour)
-traffic_with_abs_sample$hour <- as.numeric(traffic_with_abs_sample$hour)
-
-# select the variables of interest in the dataframe (exclude unnecessary variables)
-names(traffic_with_abs_sample)
-traffic_with_abs_sample$datecheck <- gsub("T00:00:00Z","", traffic_with_abs_sample$date)
-traffic_with_abs_sample$datecheck <- ymd(traffic_with_abs_sample$datecheck)
-
-# Store the traffic_vol file as an RDS
-saveRDS(traffic_with_abs_sample,file= "traffic_with_abs_sample.rds")
-names(BOMrain)
-traffic_with_abs_sample <- rename(traffic_with_abs_sample,"Day.Month.Year.in.DD.MM.YYYY.format"="datecheck")
-BOMrain$hour <- gsub('.{3}$', '',BOMrain$Hour24.Minutes..in.HH24.MI.format.in.Local.standard.time)
-BOMrain$hour <- as.integer(BOMrain$hour)
-BOMrain$nearest_weather_station <- BOMrain$Station.Number
-test <- inner_join(traffic_with_abs_sample,BOMrain,by=c("nearest_weather_station","Day.Month.Year.in.DD.MM.YYYY.format","hour"))
-
-# Test modelling
-Model <- lm(count~lane_count + pop.density + day_of_week + road_functional_hierarchy ,data = traffic.with.abs)
-summary(Model)
 
 ################################################
 ############## REMAINING STEPS #################
-# 1) Add weather data
-# 2) realign code so that distance is handled earlier and sample stations are considered
-# 3) Model data (daily_total ~ other variables)
-# 4) Interpret modelling
+# 1) Model data (daily_total ~ other variables)
+# 2) Interpret modelling
 ################################################
 
