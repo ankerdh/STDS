@@ -10,7 +10,7 @@ library(tidyr)
 library(ggplot2)
 library(ggmap)
 
-data <- readRDS("/Users/AD/STDS/FullData.rds")
+data <- readRDS("/Users/AD/STDS/FullDataRain.rds")
 str(data)
 
 #order the rms region and road hierarchy factors so they chart sensibly
@@ -34,12 +34,22 @@ ggplot(motorways, aes(daily_total)) +
   theme(text = element_text(size = 16, family="Raleway"))+
   facet_wrap(~rms_region) 
 
+#create rain bins
+data <- data %>%
+  mutate(rainclassification =
+           cut(data$DailyRain,c(-1,5,10,20,50, Inf),labels=c("no rain","sprinkle","rain","heavy rain", "wow")))
 
 #pair plots to look for relationships, data issues
-pairs_data <- data[,c("daily_total", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy","public_holiday", "school_holiday")]
+pairs_data <- data[,c("daily_total", "DailyRain", "rainclassification", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy","public_holiday", "school_holiday")]
 pairs_data[,] <- as.numeric(unlist(pairs_data[,]))
-pairs_data_small <- sample_n(pairs_data, 10000)
-pairs(pairs_data)
+#pairs_data_small <- sample_n(pairs_data, 10000)
+
+
+#rain vs traffic
+ggplot(pairs_data, aes(daily_total)) +
+  geom_histogram(binwidth = 1000, fill ="#F2C314") + 
+  theme(text = element_text(size = 16, family="Raleway"))+
+  facet_wrap(~rainclassification, scales="free_y") 
 
 summary(pairs_data)
 
@@ -50,8 +60,14 @@ data_Sydney$density_workers <- data_Sydney$pop.density * data_Sydney$pop.work.ag
 #pairs in Sydney
 pairs_data_Sydney <- data_Sydney[,c("daily_total", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "density_workers", "pop.school.age.percent", "density.vehicles.light")]
 pairs_data_Sydney[,] <- as.numeric(unlist(pairs_data_Sydney[,]))
+
+
+#sample
 pairs_data_Sydney_small <- sample_n(pairs_data_Sydney, 10000)
 pairs(pairs_data_Sydney_small)
+
+
+
 
 #correlations in Sydney region
 library(polycor)
@@ -69,11 +85,6 @@ library("factoextra")
 res.pca <- PCA(pairs_data, graph = FALSE)
 eigenvalues <- res.pca$eig
 head(eigenvalues[, 1:2])
-
-
-
-
-
 
 
 
@@ -149,4 +160,3 @@ ggplot(data) +
   geom_boxplot(aes(y=daily_total,x=yearmonth)) + 
   facet_wrap(~road_functional_hierarchy, scales = "free_y") + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
