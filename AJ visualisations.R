@@ -39,7 +39,9 @@ ggplot(motorways, aes(daily_total)) +
 pairs_data <- data[,c("daily_total", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy","public_holiday", "school_holiday")]
 pairs_data[,] <- as.numeric(unlist(pairs_data[,]))
 pairs_data_small <- sample_n(pairs_data, 10000)
-pairs(pairs_data_small)
+pairs(pairs_data)
+
+summary(pairs_data)
 
 #Sydney Region only
 data_Sydney <- data[data$rms_region=="Sydney",]
@@ -60,14 +62,28 @@ hetcor(pairs_data_Sydney)
 pairs_data <- as.data.frame(pairs_data)
 hetcor(pairs_data)
 
+#PCA
+install.packages("FactoMineR")
+library("FactoMineR")
+library("factoextra")
+res.pca <- PCA(pairs_data, graph = FALSE)
+eigenvalues <- res.pca$eig
+head(eigenvalues[, 1:2])
+
+
+
+
+
+
+
+
 #subsetting to find same same but different
   
 same_same <- as.data.frame(
   data[
   data$rms_region=="Sydney" |
-    data$road_functional_hierarchy=="Primary Road" |
-    data$Distance_CBD > 10 |
-    data$Distance_CBD < 20, 
+    data$road_functional_hierarchy=="Local Road" |
+    data$Distance_CBD > 10, 
   ]
 )
 
