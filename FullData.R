@@ -373,10 +373,12 @@ saveRDS(FullDataRain,file= "FullDataRain.rds")
 names(FullDataRain)
 
 # fixing columns
-Check <- FullDataRain %>%
+FinalData <- FullDataRain %>%
   select(-c(Key1,hour_01:hour_23,StationNum:Date1)) %>%
-  select(c(station_key:wgs84_longitude,Distance_CBD,year:day,date,day_of_week:school_holiday,))
+  select(c(station_key:wgs84_longitude,Distance_CBD:lon.x,pop.density:density.vehicles.heavy,
+           year:day,date,day_of_week:school_holiday,DailyRain,daily_total))
 
+saveRDS(FinalData,file= "FinalData.rds")
 
 ################################################
 ############## REMAINING STEPS #################
