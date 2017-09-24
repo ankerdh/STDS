@@ -5,6 +5,7 @@ library(RDS)
 library(ggplot2)
 library(rgdal)
 library(dplyr)
+library(plyr)
 library(tidyr)
 library(ggplot2)
 library(ggmap)
@@ -22,11 +23,20 @@ data <- data[data$station_key != 18479663,]
 #boxplot to show the variability of daily counts in different regions and road types
 ggplot(data) +
   geom_boxplot(aes(y=daily_total,x=road_functional_hierarchy)) + 
-  facet_wrap(~rms_region, scales = "free_y") + 
+  facet_wrap(~rms_region) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
+motorways <- data[data$road_functional_hierarchy=="Motorway",]
+
+ggplot(motorways, aes(daily_total)) +
+  geom_histogram(binwidth = 1000, fill ="#F2C314") + 
+  theme(text = element_text(size = 16, family="Raleway"))+
+  theme(text = element_text(size = 16, family="Raleway"))+
+  facet_wrap(~rms_region) 
+
+
 #pair plots to look for relationships, data issues
-pairs_data <- data[,c("daily_total", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light")]
+pairs_data <- data[,c("daily_total", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy","public_holiday", "school_holiday")]
 pairs_data[,] <- as.numeric(unlist(pairs_data[,]))
 pairs_data_small <- sample_n(pairs_data, 10000)
 pairs(pairs_data_small)
@@ -45,6 +55,34 @@ pairs(pairs_data_Sydney_small)
 library(polycor)
 pairs_data_Sydney <- as.data.frame(pairs_data_Sydney)
 hetcor(pairs_data_Sydney)
+
+#correlations
+pairs_data <- as.data.frame(pairs_data)
+hetcor(pairs_data)
+
+#subsetting to find same same but different
+  
+same_same <- as.data.frame(
+  data[
+  data$rms_region=="Sydney" |
+    data$road_functional_hierarchy=="Primary Road" |
+    data$Distance_CBD > 10 |
+    data$Distance_CBD < 20, 
+  ]
+)
+
+station_examples_large <- as.data.frame(cbind(same_same$station_key, same_same$full_name, same_same$lga))
+station_examples_small <- sample_n(station_examples_large,50)
+
+write.csv(station_examples_large, "temp.csv")
+
+station_examples <- data[data$station_key %in% c("57453", "57168", "56795", "56716" , "56745"),]
+station_characteristics <- data %>%
+  group_by(station_key, full_name, suburb, rms_region, road_functional_hierarchy, mab_way_type, road_classification_admin, cardinal_direction_seq, Distance_CBD, lane_count) %>%
+  distinct(station_key)
+
+write.csv(station_characteristics, "stations_temp.csv")
+
 
 # do we have a bunch of missing data, 
 #and WTF at April 2015 where the median daily observations per station dropped significantly
