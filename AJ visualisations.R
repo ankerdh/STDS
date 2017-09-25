@@ -67,8 +67,6 @@ pairs_data_Sydney_small <- sample_n(pairs_data_Sydney, 10000)
 pairs(pairs_data_Sydney_small)
 
 
-
-
 #correlations in Sydney region
 library(polycor)
 pairs_data_Sydney <- as.data.frame(pairs_data_Sydney)
