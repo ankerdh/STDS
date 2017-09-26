@@ -455,3 +455,16 @@ exp(predict(quasipoisson_model2,data.frame(road_functional_hierarchy="Motorway",
                                            pop.work.age.percent=60,density.vehicles.light=200,year=2015,month=12,
                                            day_of_week="SATURDAY",public_holiday=as.factor(FALSE),school_holiday=as.factor(FALSE),
                                            DailyRain=50)))
+
+# Prediction won't work until we sort 2016 ABS data. In the meantime could try this:
+quasipoisson_model3 <- glm(daily_total~road_functional_hierarchy + Distance_CBD + year + month + day_of_week + public_holiday +
+                             school_holiday + DailyRain,
+                           data=train,family=poisson(link=log)) 
+
+prediction <- exp(predict(quasipoisson_model3,newdata = test))
+test <- cbind(test,prediction)
+SummaryTest <- test %>%
+  mutate(error=sqrt((daily_total-prediction)^2)) %>%
+  summarise(average=mean(error,na.rm=TRUE))
+
+# seems to underestimate - possibly because of change in 2015
