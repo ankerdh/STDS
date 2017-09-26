@@ -12,6 +12,7 @@ library(tictoc)
 library(RDS)
 library(scales)
 library(gdata)
+library(AER)
 
 # GET the full stations database using the API
 stations_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_station_reference%20",
@@ -379,6 +380,7 @@ FinalData <- FullDataRain %>%
            year:day,date,day_of_week:school_holiday,DailyRain,daily_total))
 
 saveRDS(FinalData,file= "FinalData.rds")
+FinalData <- read_rds("/Users/RohanDanisCox/STDS/FinalData.rds") # fix to your computer location
 
 ################################################
 ############## REMAINING STEPS #################
@@ -386,3 +388,70 @@ saveRDS(FinalData,file= "FinalData.rds")
 # 2) Interpret modelling
 ################################################
 
+# split the data into train and test
+test <- FinalData %>%
+  filter(year==2016)
+train <- FinalData %>%
+  filter(year<2016)
+
+names(train)
+str(train)
+
+# fit a poisson log linear model i.e link=log
+poisson_model <- glm(daily_total~road_functional_hierarchy + mab_way_type + lane_count + cardinal_direction_seq +
+                   rms_region + lga + device_type + permanent_station + Distance_CBD + pop.density + pop.work.age.percent +
+                   pop.school.age.percent + density.vehicles.light + density.vehicles.heavy + year + month + day + day_of_week + 
+                   public_holiday + school_holiday + DailyRain,
+                 data=train,family=poisson(link=log)) # creates a huge model - 1.5gig
+
+# check for overdispersion
+mean(train$daily_total) # [1] 17018.47
+var(train$daily_total) # [1] 178949195
+dispersiontest(poisson_model) # [1] dispersion of 2301.105 which is way bigger than 1. Need to control
+summary(poisson_model) #clearly broken - every single variable has a p value of virtually 0.
+summary(poisson_model, dispersion=2301.105,correlation=TRUE,symbolic.cor = TRUE) # this seems to work much better but still has plenty of meaningless crap
+
+# will need to use this to get coefficients back to scale of data
+exp(coef(poisson_model))
+
+# another way to control for overdispersion is to use a quasipoisson model - throws up a wierd error but still works
+quasipoisson_model <- glm(daily_total~road_functional_hierarchy + mab_way_type + lane_count + cardinal_direction_seq +
+                   rms_region + lga + device_type + permanent_station + Distance_CBD + pop.density + pop.work.age.percent +
+                   pop.school.age.percent + density.vehicles.light + density.vehicles.heavy + year + month + day + day_of_week + 
+                   public_holiday + school_holiday + DailyRain,
+                 data=train,family=quasipoisson(link=log))
+summary.glm(quasipoisson_model)$dispersion
+summary(quasipoisson_model) # all variables again have nearly 0 p value
+
+# No idea where to go from here would be better off just guessing what should go in the model e.g.
+poisson_model2 <- glm(daily_total~road_functional_hierarchy + Distance_CBD + pop.density + pop.work.age.percent +
+                       density.vehicles.light + year + month + day_of_week + public_holiday + school_holiday + DailyRain,
+                     data=train,family=poisson(link=log)) 
+dispersiontest(poisson_model2) # [1] dispersion of 7981.038 
+summary(poisson_model2) 
+summary(poisson_model2, dispersion=7981.038,correlation=TRUE,symbolic.cor = TRUE) 
+
+# try slimmed down quasipoisson_model
+quasipoisson_model2 <- glm(daily_total~road_functional_hierarchy + Distance_CBD + pop.density + pop.work.age.percent +
+                        density.vehicles.light + year + month + day_of_week + public_holiday + school_holiday + DailyRain,
+                      data=train,family=poisson(link=log)) 
+summary.glm(quasipoisson_model2)$dispersion
+summary(quasipoisson_model2) # all variables again have nearly 0 p value
+
+# Don't really know what to make of any of this... 
+exp(predict(quasipoisson_model2,data.frame(road_functional_hierarchy="Motorway",Distance_CBD=20,pop.density=2000,
+                                       pop.work.age.percent=60,density.vehicles.light=200,year=2015,month=12,
+                                       day_of_week="SATURDAY",public_holiday=as.factor(FALSE),school_holiday=as.factor(FALSE),
+                                       DailyRain=0)))
+# [1] 45384.74
+# works but fuck knows if it is any good...if I change to "MONDAY" instead I get 47541 which seems sensible
+exp(predict(quasipoisson_model2,data.frame(road_functional_hierarchy="Motorway",Distance_CBD=20,pop.density=2000,
+                                           pop.work.age.percent=60,density.vehicles.light=200,year=2015,month=12,
+                                           day_of_week="MONDAY",public_holiday=as.factor(FALSE),school_holiday=as.factor(FALSE),
+                                           DailyRain=0)))
+# [1] 47541.97
+# If I add heaps of rain it reduces so maybe it is actually working okay
+exp(predict(quasipoisson_model2,data.frame(road_functional_hierarchy="Motorway",Distance_CBD=20,pop.density=2000,
+                                           pop.work.age.percent=60,density.vehicles.light=200,year=2015,month=12,
+                                           day_of_week="SATURDAY",public_holiday=as.factor(FALSE),school_holiday=as.factor(FALSE),
+                                           DailyRain=50)))
