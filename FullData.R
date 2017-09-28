@@ -228,6 +228,8 @@ LGA.wide$density.total.businesses <- LGA.wide$total.businesses / LGA.wide$lga.ar
 #subset the final columns we need
 LGA.wide <- LGA.wide[,c("lga","year","lga.area.2014","pop.density","pop.work.age.percent","pop.school.age.percent","density.vehicles.light","density.vehicles.heavy","density.transport.businesses","density.total.businesses","median.income")]
 
+saveRDS(LGA.wide,file="LGA.wide.rds")
+
 #left join to add ABS data for LGA/Year to each row of traffic data
 traffic.with.abs <- merge(x = traffic_vol, y = LGA.wide, by = c("lga", "year"), all.x = TRUE)
 traffic_with_abs <- traffic.with.abs
@@ -388,14 +390,30 @@ FinalData <- read_rds("/Users/RohanDanisCox/STDS/FinalData.rds") # fix to your c
 # 2) Interpret modelling
 ################################################
 
+# to fix ABS figures for 2016 which were missing from the data
+LGA2015 <- LGA.wide %>%
+  filter(year<2016)
+LGA2016 <- LGA.wide %>%
+  filter(year==2015)
+LGA2016 <- LGA2016 %>%
+  mutate(year2=(year+1)) %>%
+  select(lga,year2,pop.density,pop.work.age.percent,pop.work.age.percent,pop.school.age.percent,density.vehicles.light,density.vehicles.heavy)
+LGA2015 <- LGA2015 %>%
+  select(lga,year,pop.density,pop.work.age.percent,pop.work.age.percent,pop.school.age.percent,density.vehicles.light,density.vehicles.heavy)
+LGA2016 <- rename(LGA2016, year=year2)
+LGAfix <- rbind(LGA2015,LGA2016)
+
+Check <- FinalData %>%
+  select(-c(pop.density,pop.work.age.percent,pop.work.age.percent,pop.school.age.percent,density.vehicles.light,density.vehicles.heavy))
+  
+Check2 <- merge(x = Check, y = LGAfix, by = c("lga", "year"), all.x = TRUE)
+FinalData<-Check2
+
 # split the data into train and test
 test <- FinalData %>%
   filter(year==2016)
 train <- FinalData %>%
   filter(year<2016)
-
-names(train)
-str(train)
 
 # fit a poisson log linear model i.e link=log
 poisson_model <- glm(daily_total~road_functional_hierarchy + mab_way_type + lane_count + cardinal_direction_seq +
@@ -466,5 +484,13 @@ test <- cbind(test,prediction)
 SummaryTest <- test %>%
   mutate(error=sqrt((daily_total-prediction)^2)) %>%
   summarise(average=mean(error,na.rm=TRUE))
+# 6730
 
+prediction <- exp(predict(quasipoisson_model2,newdata = test))
+test <- cbind(test,prediction)
+SummaryTest <- test %>%
+  mutate(error=sqrt((daily_total-prediction)^2)) %>%
+  summarise(average=mean(error,na.rm=TRUE))
+
+# 6762
 # seems to underestimate - possibly because of change in 2015
