@@ -10,6 +10,7 @@ library(tidyr)
 library(ggplot2)
 library(ggmap)
 library(readr)
+library(scales)
 
 
 data <- readRDS("/Users/AD/STDS/FullDataRain.rds")
@@ -75,48 +76,28 @@ data <- data %>%
   mutate(rainclassification =
            cut(data$DailyRain,c(-1,5,10,20,50, Inf),labels=c("no rain","sprinkle","rain","heavy rain", "wow")))
 
-#pair plots to look for relationships, data issues
-pairs_data <- data[,c("daily_total", "DailyRain", "rainclassification", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy","public_holiday", "school_holiday")]
-pairs_data[,] <- as.numeric(unlist(pairs_data[,]))
-#pairs_data_small <- sample_n(pairs_data, 10000)
+#trimmed data to look for correlations, data issues
+cor_data <- data[,c("daily_total", "DailyRain", "rainclassification", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy","public_holiday", "school_holiday")]
+cor_data[,] <- as.numeric(unlist(cor_data[,]))
 
-#rain vs traffic
-ggplot(pairs_data, aes(daily_total)) +
+#traffic in different rain bins
+ggplot(cor_data, aes(daily_total)) +
   geom_histogram(binwidth = 1000, fill ="#F2C314") + 
   theme(text = element_text(size = 16, family="Raleway"))+
   facet_wrap(~rainclassification, scales="free_y") 
 
-summary(pairs_data)
-
-#Sydney Region only
-data_Sydney <- data[data$rms_region=="Sydney",]
-data_Sydney$density_workers <- data_Sydney$pop.density * data_Sydney$pop.work.age.percent / 100
-
-#pairs in Sydney
-pairs_data_Sydney <- data_Sydney[,c("daily_total", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "density_workers", "pop.school.age.percent", "density.vehicles.light")]
-pairs_data_Sydney[,] <- as.numeric(unlist(pairs_data_Sydney[,]))
-
-
-#sample
-pairs_data_Sydney_small <- sample_n(pairs_data_Sydney, 10000)
-pairs(pairs_data_Sydney_small)
-
-
-#correlations in Sydney region
+#correlations 
 library(polycor)
-pairs_data_Sydney <- as.data.frame(pairs_data_Sydney)
-hetcor(pairs_data_Sydney)
+hetcor_results <- hetcor(cor_data)
+cor_results <- cor(cor_data)
+cor_results
+hetcor_results
 
-#correlations on group data set
-cor_data <- read_rds("/Users/AD/STDS/FinalData.rds") 
-cor_data[,] <- as.data.frame(as.numeric(unlist(cor_data)))
-hetcor(cor_data)
-
+#explored but not used: Variable Importance package from the Random Forest world
 library("Boruta")
 boruta_output <- Boruta(daily_total ~ ., data=na.omit(data), doTrace=2)
 
-
-
+#explored but not used
 #PCA
 install.packages("FactoMineR")
 library("FactoMineR")
@@ -124,8 +105,6 @@ library("factoextra")
 res.pca <- PCA(pairs_data, graph = FALSE)
 eigenvalues <- res.pca$eig
 head(eigenvalues[, 1:2])
-
-
 
 #subsetting to find same same but different
   
@@ -194,6 +173,7 @@ data_345 <- merge(x = data_3and4, y = data5, by = "station_key", all = TRUE)
 data_345
 
 #this bit examines how from 2015 there is a dramatic shift in type of roads being monitored
+#create date fields that contain 1st of the month
 data$yearmonth <- as.character((data$year*100 + data$month)/100)
 data$fakedate <- paste(as.character(data$year), as.character(data$month),"01", sep="-")
 data$fakedate <- as.Date(data$fakedate)
@@ -208,6 +188,7 @@ primary_data <- data[data$road_functional_hierarchy=="Primary Road",]
 ggplot(primary_data) +
   geom_boxplot(aes(y=daily_total,x=fakedate, group=fakedate)) + 
   theme(text = element_text(size = 16, family="Raleway")) +
+  scale_y_continuous(label=comma) +
   labs(y="Daily traffic volume", 
        x="Time", 
        title = "Primary Road daily traffic distribution, by month",
