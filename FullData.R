@@ -13,6 +13,8 @@ library(RDS)
 library(scales)
 library(gdata)
 library(AER)
+library(caret)
+library(MASS)
 
 # GET the full stations database using the API
 stations_api<- GET("https://api.transport.nsw.gov.au/v1/roads/spatial?format=geojson&q=select%20*%20from%20road_traffic_counts_station_reference%20",
@@ -228,7 +230,8 @@ LGA.wide$density.total.businesses <- LGA.wide$total.businesses / LGA.wide$lga.ar
 #subset the final columns we need
 LGA.wide <- LGA.wide[,c("lga","year","lga.area.2014","pop.density","pop.work.age.percent","pop.school.age.percent","density.vehicles.light","density.vehicles.heavy","density.transport.businesses","density.total.businesses","median.income")]
 
-saveRDS(LGA.wide,file="LGA.wide.rds")
+saveRDS(LGA.wide,file="LGA_wide.rds")
+LGA.wide <- read_rds("/Users/RohanDanisCox/STDS/LGA_wide.rds") # need to change to your location
 
 #left join to add ABS data for LGA/Year to each row of traffic data
 traffic.with.abs <- merge(x = traffic_vol, y = LGA.wide, by = c("lga", "year"), all.x = TRUE)
@@ -409,6 +412,9 @@ Check <- FinalData %>%
 Check2 <- merge(x = Check, y = LGAfix, by = c("lga", "year"), all.x = TRUE)
 FinalData<-Check2
 
+saveRDS(FinalData,file= "FinalData.rds")
+FinalData <- read_rds("/Users/RohanDanisCox/STDS/FinalData.rds") # fix to your computer location
+
 # split the data into train and test
 test <- FinalData %>%
   filter(year==2016)
@@ -492,5 +498,188 @@ SummaryTest <- test %>%
   mutate(error=sqrt((daily_total-prediction)^2)) %>%
   summarise(average=mean(error,na.rm=TRUE))
 
+
+plot(quasipoisson_model3)
 # 6762
 # seems to underestimate - possibly because of change in 2015
+
+
+###
+### Cutting down to April 2015
+###
+
+DataApril2015 <- FinalData %>%
+  filter(date>"2015-03-31")
+
+saveRDS(DataApril2015,file= "DataApril2015.rds")
+DataApril2015 <- read_rds("/Users/RohanDanisCox/STDS/DataApril2015.rds") # fix to your computer location
+
+# split into test & training
+set.seed(42)
+train = createDataPartition(y = DataApril2015$daily_total, p = 0.80, list = F)
+Working = DataApril2015[train,]
+Holdout = DataApril2015[-train,]
+
+train = createDataPartition(y = Working$daily_total, p = 0.70, list = F)
+trainset = Working[train,]
+testset = Working[-train,]
+
+## FORWARD SELECTION
+
+variables <- c("DailyRain","pop.density","day_of_week","road_functional_hierarchy","density.vehicles.light","pop.work.age.percent",
+              "year","month","day","Distance_CBD","public_holiday","school_holiday")
+Variable1 <-data.frame()
+for(i in variables) {
+    model <- glm(paste("daily_total~", i[[1]]),
+                 data=trainset,family=quasipoisson(link=log))
+    prediction <- exp(predict(model,newdata = testset))
+    check <- cbind(testset,prediction)
+    SummaryTest <- check %>%
+      mutate(error=sqrt((daily_total-prediction)^2)) %>%
+      summarise(average=mean(error,na.rm=TRUE))
+    bind <- cbind(i,SummaryTest)
+    Variable1 <- rbind(Variable1,bind)
+}
+# Distance_CBD
+variables2 <- variables <- c("DailyRain","pop.density","day_of_week","road_functional_hierarchy","density.vehicles.light","pop.work.age.percent",
+                             "year","month","day","public_holiday","school_holiday")
+Variable2 <-data.frame()
+for(i in variables2) {
+  model <- glm(paste("daily_total~ Distance_CBD +", i[[1]]),
+               data=trainset,family=quasipoisson(link=log))
+  prediction <- exp(predict(model,newdata = testset))
+  check <- cbind(testset,prediction)
+  SummaryTest <- check %>%
+    mutate(error=sqrt((daily_total-prediction)^2)) %>%
+    summarise(average=mean(error,na.rm=TRUE))
+  bind <- cbind(i,SummaryTest)
+  Variable2 <- rbind(Variable2,bind)
+}
+# road_functional_heirarchy
+variables3 <- variables <- c("DailyRain","pop.density","day_of_week","density.vehicles.light","pop.work.age.percent",
+                             "year","month","day","public_holiday","school_holiday")
+Variable3 <-data.frame()
+for(i in variables3) {
+  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy +", i[[1]]),
+               data=trainset,family=quasipoisson(link=log))
+  prediction <- exp(predict(model,newdata = testset))
+  check <- cbind(testset,prediction)
+  SummaryTest <- check %>%
+    mutate(error=sqrt((daily_total-prediction)^2)) %>%
+    summarise(average=mean(error,na.rm=TRUE))
+  bind <- cbind(i,SummaryTest)
+  Variable3 <- rbind(Variable3,bind)
+}
+# day_of_week
+variables4 <- variables <- c("DailyRain","pop.density","density.vehicles.light","pop.work.age.percent",
+                             "year","month","day","public_holiday","school_holiday")
+Variable4 <-data.frame()
+for(i in variables4) {
+  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week +", i[[1]]),
+               data=trainset,family=quasipoisson(link=log))
+  prediction <- exp(predict(model,newdata = testset))
+  check <- cbind(testset,prediction)
+  SummaryTest <- check %>%
+    mutate(error=sqrt((daily_total-prediction)^2)) %>%
+    summarise(average=mean(error,na.rm=TRUE))
+  bind <- cbind(i,SummaryTest)
+  Variable4 <- rbind(Variable4,bind)
+}
+# public_holiday
+variables5 <- variables <- c("DailyRain","pop.density","density.vehicles.light","pop.work.age.percent",
+                             "year","month","day","school_holiday")
+Variable5 <-data.frame()
+for(i in variables5) {
+  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + ", i[[1]]),
+               data=trainset,family=quasipoisson(link=log))
+  prediction <- exp(predict(model,newdata = testset))
+  check <- cbind(testset,prediction)
+  SummaryTest <- check %>%
+    mutate(error=sqrt((daily_total-prediction)^2)) %>%
+    summarise(average=mean(error,na.rm=TRUE))
+  bind <- cbind(i,SummaryTest)
+  Variable5 <- rbind(Variable5,bind)
+}
+# DailyRain
+variables6 <- variables <- c("pop.density","density.vehicles.light","pop.work.age.percent",
+                             "year","month","day","school_holiday")
+Variable6 <-data.frame()
+for(i in variables6) {
+  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + DailyRain + ", i[[1]]),
+               data=trainset,family=quasipoisson(link=log))
+  prediction <- exp(predict(model,newdata = testset))
+  check <- cbind(testset,prediction)
+  SummaryTest <- check %>%
+    mutate(error=sqrt((daily_total-prediction)^2)) %>%
+    summarise(average=mean(error,na.rm=TRUE))
+  bind <- cbind(i,SummaryTest)
+  Variable6 <- rbind(Variable6,bind)
+}
+# School_Holiday
+variables7 <- variables <- c("pop.density","density.vehicles.light","pop.work.age.percent",
+                             "year","month","day")
+Variable7 <-data.frame()
+for(i in variables7) {
+  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + DailyRain + school_holiday +", i[[1]]),
+               data=trainset,family=quasipoisson(link=log))
+  prediction <- exp(predict(model,newdata = testset))
+  check <- cbind(testset,prediction)
+  SummaryTest <- check %>%
+    mutate(error=sqrt((daily_total-prediction)^2)) %>%
+    summarise(average=mean(error,na.rm=TRUE))
+  bind <- cbind(i,SummaryTest)
+  Variable7 <- rbind(Variable7,bind)
+}
+## STOP
+
+## Final Model 
+
+Final_Model <- glm(daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + DailyRain + school_holiday,
+                   data=trainset,family=quasipoisson(link=log)) 
+Alt_model <- glm.nb(daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + DailyRain + school_holiday,
+                   data=trainset) 
+summary(Alt_model)
+prediction <- exp(predict(Alt_model,newdata = testset))
+prediction <- exp(predict.glm(Final_Model,newdata = testset))
+testset <- cbind(testset,prediction)
+ggplot(testset,aes(x=daily_total,y=prediction,colour=road_functional_hierarchy))+
+  geom_point(size=0.5,alpha=0.2)
+
+?glm.nb
+
+names(Final_Model)
+summary.glm(Final_Model)$dispersion
+summary(Final_Model, dispersion=11946.67,correlation=TRUE,symbolic.cor = TRUE)
+
+prediction <- exp(predict.glm(Final_Model,type="response",newdata = testset))
+testset <- cbind(testset,prediction)
+ggplot(testset,aes(x=daily_total,y=prediction,colour=road_functional_hierarchy))+
+  geom_point(size=0.5,alpha=0.2) + 
+  expand_limits(x=c(0,80000), y=c(0,80000))
+ggplot(testset,aes(x=daily_total,y=prediction,colour=rms_region))+
+  geom_point(size=0.5,alpha=0.2) + 
+  expand_limits(x=c(0,80000), y=c(0,80000))
+ggplot(testset) +
+  geom_jitter(aes(x=day_of_week,y=prediction),colour="red",size=0.05,alpha=0.1) +
+  geom_jitter(aes(x=day_of_week,y=daily_total),colour="blue",size=0.05,alpha=0.1) 
+
+?glm
+# Try just Sydney RMS
+
+Sydney <- Working %>%
+  filter(rms_region=="Sydney")
+
+train = createDataPartition(y = Sydney$daily_total, p = 0.70, list = F)
+Sydtrainset = Working[train,]
+Sydtestset = Working[-train,]
+
+
+Sydney_Model <- glm(daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + DailyRain + school_holiday,
+                   data=Sydtrainset,family=poisson(link=log)) 
+
+prediction <- exp(predict(Sydney_Model,newdata = Sydtestset))
+Sydtestset <- cbind(Sydtestset,prediction)
+ggplot(Sydtestset,aes(x=daily_total,y=prediction))+
+  geom_point(size=0.5,alpha=0.2) +
+  geom_smooth() + 
+  expand_limits(x=c(0,80000), y=c(0,80000))
