@@ -539,6 +539,26 @@ SummaryHoldout <- Holdout %>%
   mutate(Error=sqrt((daily_total-prediction)^2)) %>%
   summarise(AverageError=mean(Error,na.rm=TRUE))
 
+# Consider performance on holdout set by RMS region
+RMS_Region_Summary <- Holdout %>%
+  mutate(Error=sqrt((daily_total-prediction)^2)) %>%
+  group_by(rms_region) %>%
+  summarise(Average_Error = mean(Error))
+write.csv(RMS_Region_Summary,"RMSerror.csv")
+
+# Consider performance on holdout set by Road Functional Hierarchy
+RoadHierarchy <- Holdout %>%
+  mutate(Error=sqrt((daily_total-prediction)^2)) %>%
+  group_by(road_functional_hierarchy) %>%
+  summarise(Average_Error = mean(Error))
+write.csv(RoadHierarchy,"RoadHierarchy.csv")
+
+# Consider performance on holdout set by Day of week
+DayOfWeek <- Holdout %>%
+  mutate(Error=sqrt((daily_total-prediction)^2)) %>%
+  group_by(day_of_week) %>%
+  summarise(Average_Error = mean(Error))
+write.csv(DayOfWeek,"DayOfWeek.csv")
 
 #########################################################
 ################    VISUALISATIONS    ###################
@@ -552,12 +572,20 @@ SummaryHoldout <- Holdout %>%
 
 # Visualising predicted vs actuals
 ggplot(Holdout,aes(x=daily_total,y=prediction,colour=road_functional_hierarchy))+
-  geom_point(size=0.25,alpha=0.3) +
+  geom_point(size=0.5,alpha=0.4) +
   guides(colour = guide_legend(override.aes = list(alpha=1,size=5))) +
-  labs(y="QuasiPoisson Predicted Daily Count",x="Actual Daily Count")
+  labs(y="QuasiPoisson Predicted Daily Count",x="Actual Daily Count") + 
+  theme(axis.title = element_text(size=20)) +
+  theme(legend.title = element_text(size=20)) +
+  theme(legend.text = element_text(size=16))+
+  theme(text=element_text(size=16)) 
 
 # Visualising the distribution by Day of Week
 ggplot(Holdout) +
-  geom_jitter(aes(x=day_of_week,y=QP_prediction),colour="red",size=0.02,alpha=0.1) +
-  geom_jitter(aes(x=day_of_week,y=daily_total),colour="blue",size=0.02,alpha=0.1) +
-  labs(y="Daily Count (Predicted = Red, Actuals = Blue)",x="Day of Week")
+  geom_jitter(aes(x=day_of_week,y=prediction),colour="red",size=0.2,alpha=0.1) +
+  geom_jitter(aes(x=day_of_week,y=daily_total),colour="blue",size=0.2,alpha=0.1) +
+  labs(y="Daily Count (Predicted = Red, Actuals = Blue)",x="Day of Week") + 
+  theme(axis.title = element_text(size=20)) +
+  theme(legend.title = element_text(size=20)) +
+  theme(legend.text = element_text(size=16))+
+  theme(text=element_text(size=16)) 
