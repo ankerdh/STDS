@@ -361,6 +361,11 @@ Check <- FinalData %>%
 Check2 <- merge(x = Check, y = LGAfix, by = c("lga", "year"), all.x = TRUE)
 FinalData<-Check2
 
+# Remove Null values for RMS_region
+FinalData <- FinalData %>%
+  drop_na()
+FinalData$rms_region <- factor(FinalData$rms_region)
+
 # Save and Retrieve Data
 saveRDS(FinalData,file= "FinalData.rds")
 FinalData <- read_rds("/Users/RohanDanisCox/STDS/FinalData.rds") # fix to your computer location
@@ -391,11 +396,11 @@ testset = Working[-train1,]
 
 # Full model
 QP_Full <- glm(daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + DailyRain + school_holiday+
-                    pop.density + density.vehicles.light + pop.work.age.percent + year + month + day + date,
+                    pop.density + density.vehicles.light + pop.work.age.percent + year + month + day + date + rms_region,
                   data=trainset,family=quasipoisson(link=log)) 
 
 NB_Full <-glm.nb(daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + DailyRain + school_holiday+
-                            pop.density + density.vehicles.light + pop.work.age.percent + year + month + day + date,
+                            pop.density + density.vehicles.light + pop.work.age.percent + year + month + day + date + rms_region,
                           data=trainset) 
 
 # Consider summary for each model
@@ -404,7 +409,7 @@ summary.glm(NB_Full)
 
 # Model Selection -> via forward selection
 variables <- c("DailyRain","pop.density","day_of_week","road_functional_hierarchy","density.vehicles.light","pop.work.age.percent",
-              "year","month","day","Distance_CBD","public_holiday","school_holiday","date")
+              "year","month","day","Distance_CBD","public_holiday","school_holiday","date","rms_region")
 Variable1 <-data.frame()
 for(i in variables) {
     model <- glm(paste("daily_total~", i[[1]]),
@@ -419,7 +424,7 @@ for(i in variables) {
 }
 # Variable 1 = Distance_CBD
 variables2 <- variables <- c("DailyRain","pop.density","day_of_week","road_functional_hierarchy","density.vehicles.light","pop.work.age.percent",
-                             "year","month","day","public_holiday","school_holiday","date")
+                             "year","month","day","public_holiday","school_holiday","date","rms_region")
 Variable2 <-data.frame()
 for(i in variables2) {
   model <- glm(paste("daily_total~ Distance_CBD +", i[[1]]),
@@ -434,7 +439,7 @@ for(i in variables2) {
 }
 # Variable 2 = road_functional_heirarchy
 variables3 <- variables <- c("DailyRain","pop.density","day_of_week","density.vehicles.light","pop.work.age.percent",
-                             "year","month","day","public_holiday","school_holiday","date")
+                             "year","month","day","public_holiday","school_holiday","date","rms_region")
 Variable3 <-data.frame()
 for(i in variables3) {
   model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy +", i[[1]]),
@@ -447,12 +452,12 @@ for(i in variables3) {
   bind <- cbind(i,SummaryTest)
   Variable3 <- rbind(Variable3,bind)
 }
-# Variable 3 = day_of_week
-variables4 <- variables <- c("DailyRain","pop.density","density.vehicles.light","pop.work.age.percent",
+# Variable 3 = rms_region
+variables4 <- variables <- c("DailyRain","pop.density","day_of_week","density.vehicles.light","pop.work.age.percent",
                              "year","month","day","public_holiday","school_holiday","date")
 Variable4 <-data.frame()
 for(i in variables4) {
-  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week +", i[[1]]),
+  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + rms_region +", i[[1]]),
                data=trainset,family=quasipoisson(link=log))
   prediction <- exp(predict(model,newdata = testset))
   check <- cbind(testset,prediction)
@@ -462,12 +467,12 @@ for(i in variables4) {
   bind <- cbind(i,SummaryTest)
   Variable4 <- rbind(Variable4,bind)
 }
-# Variable 4 = public_holiday
+# Variable 4 = day_of_week
 variables5 <- variables <- c("DailyRain","pop.density","density.vehicles.light","pop.work.age.percent",
-                             "year","month","day","school_holiday","date")
+                             "year","month","day","public_holiday","school_holiday","date")
 Variable5 <-data.frame()
 for(i in variables5) {
-  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + ", i[[1]]),
+  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + rms_region + day_of_week +", i[[1]]),
                data=trainset,family=quasipoisson(link=log))
   prediction <- exp(predict(model,newdata = testset))
   check <- cbind(testset,prediction)
@@ -477,12 +482,12 @@ for(i in variables5) {
   bind <- cbind(i,SummaryTest)
   Variable5 <- rbind(Variable5,bind)
 }
-# Variable 5 = DailyRain
-variables6 <- variables <- c("pop.density","density.vehicles.light","pop.work.age.percent",
+# Variable 5 = public_holiday
+variables6 <- variables <- c("DailyRain","pop.density","density.vehicles.light","pop.work.age.percent",
                              "year","month","day","school_holiday","date")
 Variable6 <-data.frame()
 for(i in variables6) {
-  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + DailyRain + ", i[[1]]),
+  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + rms_region + day_of_week + public_holiday + ", i[[1]]),
                data=trainset,family=quasipoisson(link=log))
   prediction <- exp(predict(model,newdata = testset))
   check <- cbind(testset,prediction)
@@ -492,12 +497,12 @@ for(i in variables6) {
   bind <- cbind(i,SummaryTest)
   Variable6 <- rbind(Variable6,bind)
 }
-# Variable 6 = School_Holiday
+# Variable 6 = DailyRain
 variables7 <- variables <- c("pop.density","density.vehicles.light","pop.work.age.percent",
-                             "year","month","day","date")
+                             "year","month","day","school_holiday","date")
 Variable7 <-data.frame()
 for(i in variables7) {
-  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + DailyRain + school_holiday +", i[[1]]),
+  model <- glm(paste("daily_total~ Distance_CBD + road_functional_hierarchy + rms_region + day_of_week + public_holiday + DailyRain + ", i[[1]]),
                data=trainset,family=quasipoisson(link=log))
   prediction <- exp(predict(model,newdata = testset))
   check <- cbind(testset,prediction)
@@ -507,12 +512,12 @@ for(i in variables7) {
   bind <- cbind(i,SummaryTest)
   Variable7 <- rbind(Variable7,bind)
 }
-# STOP -> No further benefit - This code was also completed for a negative binomial model
+# Variable 7 = school_holiday STOP -> No further benefit - This code was also completed for a negative binomial model
 
 # Final Model 
-QP_Final <- glm(daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + DailyRain + school_holiday,
+QP_Final <- glm(daily_total~ Distance_CBD + road_functional_hierarchy +rms_region + day_of_week + public_holiday + DailyRain + school_holiday,
                    data=trainset,family=quasipoisson(link=log)) 
-NB_Final <- glm.nb(daily_total~ Distance_CBD + road_functional_hierarchy + day_of_week + public_holiday + DailyRain + school_holiday,
+NB_Final <- glm.nb(daily_total~ Distance_CBD + road_functional_hierarchy + rms_region + day_of_week + public_holiday + DailyRain + school_holiday,
                    data=trainset) 
 
 # Summary of Final Models
@@ -533,8 +538,6 @@ Holdout <- cbind(Holdout,prediction)
 SummaryHoldout <- Holdout %>%
   mutate(Error=sqrt((daily_total-prediction)^2)) %>%
   summarise(AverageError=mean(Error,na.rm=TRUE))
-
-
 
 
 #########################################################
