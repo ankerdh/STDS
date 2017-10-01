@@ -560,6 +560,25 @@ DayOfWeek <- Holdout %>%
   summarise(Average_Error = mean(Error))
 write.csv(DayOfWeek,"DayOfWeek.csv")
 
+# Consider performance on holdout set by rainfall groups
+summary(Holdout$Distance_CBD)
+
+Distance <- Holdout %>%
+  mutate(DtoCBD= cut(Holdout$Distance_CBD,c(0,5000,20000,40000,100000,250000, Inf),labels=c("Within 5km","5km to 20km","20km to 40km","40km to 100km","100km to 250km", "Greater than 250km"))) %>%
+  mutate(Error=sqrt((daily_total-prediction)^2)) %>%
+  group_by(DtoCBD) %>%
+  summarise(Average_Error = mean(Error))
+write.csv(Distance,"DtoCBD.csv")
+
+# Consider performance on holdout set by rainfall groups
+Rain <- Holdout %>%
+  mutate(rainclassification = cut(Holdout$DailyRain,c(-1,5,10,20,50, Inf),labels=c("No Rain","Sprinkle","Rain","Heavy Rain", "Torrential Rain"))) %>%
+  mutate(Error=sqrt((daily_total-prediction)^2)) %>%
+  group_by(rainclassification) %>%
+  summarise(Average_Error = mean(Error))
+write.csv(Rain,"Rain.csv")
+
+
 #########################################################
 ################    VISUALISATIONS    ###################
 #########################################################
@@ -573,6 +592,7 @@ write.csv(DayOfWeek,"DayOfWeek.csv")
 # Visualising predicted vs actuals
 ggplot(Holdout,aes(x=daily_total,y=prediction,colour=road_functional_hierarchy))+
   geom_point(size=0.5,alpha=0.4) +
+  geom_line()
   guides(colour = guide_legend(override.aes = list(alpha=1,size=5))) +
   labs(y="QuasiPoisson Predicted Daily Count",x="Actual Daily Count") + 
   theme(axis.title = element_text(size=20)) +
@@ -585,6 +605,19 @@ ggplot(Holdout) +
   geom_jitter(aes(x=day_of_week,y=prediction),colour="red",size=0.2,alpha=0.1) +
   geom_jitter(aes(x=day_of_week,y=daily_total),colour="blue",size=0.2,alpha=0.1) +
   labs(y="Daily Count (Predicted = Red, Actuals = Blue)",x="Day of Week") + 
+  theme(axis.title = element_text(size=20)) +
+  theme(legend.title = element_text(size=20)) +
+  theme(legend.text = element_text(size=16))+
+  theme(text=element_text(size=16)) 
+
+# Visualising for rainfall
+Rain <- Holdout %>%
+  filter(DailyRain>5)
+ggplot(Rain,aes(x=daily_total,y=prediction,colour=DailyRain))+
+  geom_point(size=3,alpha=0.3) +
+  scale_color_gradient2(low="white",mid="blue",high ="darkblue",midpoint=40)+
+  guides(colour = guide_legend(override.aes = list(alpha=1,size=5))) +
+  labs(y="QuasiPoisson Predicted Daily Count",x="Actual Daily Count") + 
   theme(axis.title = element_text(size=20)) +
   theme(legend.title = element_text(size=20)) +
   theme(legend.text = element_text(size=16))+
