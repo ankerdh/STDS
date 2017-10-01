@@ -1,3 +1,18 @@
+---
+title: "Traffic volume prediction model - Report for Roads and Maritime Services, and other NSW Government stakeholders"
+author: "Gridlock Analytics"
+date: "31 September 2017"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, eval=FALSE}
 library(httr)
 library(jsonlite)
 library(tidyverse)
@@ -707,3 +722,4 @@ ggplot(Rain,aes(x=daily_total,y=prediction,colour=DailyRain))+
   theme(legend.title = element_text(size=20)) +
   theme(legend.text = element_text(size=16))+
   theme(text=element_text(size=16)) 
+```
