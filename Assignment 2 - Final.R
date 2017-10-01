@@ -16,6 +16,7 @@ library(AER)
 library(caret)
 library(MASS)
 library(arm)
+library(polycor)
 
 #########################################################
 ############ DATA ACQUISITION AND CLEANING ##############
@@ -587,6 +588,76 @@ write.csv(Rain,"Rain.csv")
 
 #### INCLUDE VISUALISATIONS HERE ####
 
+
+#FIGURE 3 - boxplot for final report showing changed nature of Primary Road data collected from 2015
+primary_data <- FinalData[FinalData$road_functional_hierarchy=="Primary Road",] #only Primary Roads
+primary_data$fakedate <- paste(as.character(primary_data$year), as.character(primary_data$month),"01", sep="-") #create a date value for each Month for charting
+primary_data$fakedate <- as.Date(primary_data$fakedate)
+ggplot(primary_data) +
+  geom_boxplot(aes(y=daily_total,x=fakedate, group=fakedate)) + 
+  theme(text = element_text(size = 16, family="Raleway")) +
+  scale_y_continuous(label=comma) +
+  labs(y="Daily traffic volume", 
+       x="Time", 
+       title = "Primary Road daily traffic distribution, by month",
+       subtitle = "There is a clear discontinuity in April 2015"
+  ) +
+  scale_x_date(name = 'Time', 
+               date_breaks = '1 year',
+               date_labels = '%Y'
+  ) 
+
+#FIGURE 4 - boxplot to show the variability of daily counts in different regions and road types
+sydney_hunter_data <- FinalData[FinalData$rms_region %in% c("Sydney","Hunter"),]
+sydney_hunter_data$rms_region <- ordered(sydney_hunter_data$rms_region, levels = c("Sydney", "Hunter", "Northern", "Southern", "South West", "Western"))
+sydney_hunter_data$road_functional_hierarchy <- ordered(sydney_hunter_data$road_functional_hierarchy, levels = c("Motorway", "Primary Road", "Arterial Road", "Sub-Arterial Road", "Distributor Road", "Local Road"))
+ggplot(sydney_hunter_data) +
+  geom_boxplot(aes(y=daily_total,x=road_functional_hierarchy)) + 
+  facet_wrap(~rms_region) + 
+  theme(text = element_text(size = 16, family="Raleway")) +
+  labs(y="Daily traffic volume", 
+       x="Road function", 
+       title = "Different RMS Regions and Road Functions\nexhibit different levels of traffic variability",
+       subtitle = "In particular, Hunter motorways are more likely to have quiet periods"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+
+#data for TABLE 3 - Pearson correlation coefficients
+pairs_data <- FinalData[,c("daily_total", "DailyRain", "rainclassification", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy","public_holiday", "school_holiday")]
+cor_data[,] <- as.numeric(unlist(pairs_data[,]))
+cor_results <- hetcor(cor_data)
+cor_results
+
+
+#FIGURE 5 - rain vs traffic
+ggplot(FinalData) +
+  geom_point(aes(y=daily_total,x=DailyRain)) + 
+  theme(text = element_text(size = 16, family="Raleway")) +
+  labs(y="Daily traffic volume", 
+       x="Daily rainfall (mm)", 
+       title = "Traffic vs Rainfall - potential correlation",
+       subtitle = "However, vertical bands invite a closer investigation"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+
+#FIGURE 6 - rain vs traffic v2 - colour for days of week
+ggplot(FinalData) +
+  geom_point(aes(y=daily_total,x=DailyRain, colour=factor(day_of_week))) + 
+  theme(text = element_text(size = 16, family="Raleway")) +
+  labs(y="Daily traffic volume", 
+       x="Daily rainfall (mm)", 
+       colour="",
+       title = "Traffic vs Rainfall, by Day of Week",
+       subtitle = "Makes clear that the plot is skewed by observations\nfrom just a few days of extreme rain"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+
+#FIGURE 7 - LGA scatterplots - WARNING - takes 30 mins to run pairs plots on this data set
+pairs_data_LGA <- FinalData[,c("daily_total", "rms_region", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy")]
+pairs(pairs_data_LGA)
 
 
 # Visualising predicted vs actuals
