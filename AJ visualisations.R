@@ -9,8 +9,11 @@ library(plyr)
 library(tidyr)
 library(ggplot2)
 library(ggmap)
+library(readr)
+library(scales)
 
-data <- readRDS("/Users/AD/STDS/FullData.rds")
+
+data <- readRDS("/Users/AD/STDS/FullDataRain.rds")
 str(data)
 
 #order the rms region and road hierarchy factors so they chart sensibly
@@ -21,13 +24,21 @@ data$road_functional_hierarchy <- ordered(data$road_functional_hierarchy, levels
 data <- data[data$station_key != 18479663,]
 
 #boxplot to show the variability of daily counts in different regions and road types
-ggplot(data) +
+sydney_hunter_data <- data[data$rms_region %in% c("Sydney","Hunter"),]
+ggplot(sydney_hunter_data) +
   geom_boxplot(aes(y=daily_total,x=road_functional_hierarchy)) + 
   facet_wrap(~rms_region) + 
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  theme(text = element_text(size = 16, family="Raleway")) +
+  labs(y="Daily traffic volume", 
+       x="Road function", 
+       title = "Different RMS Regions and Road Functions\nexhibit different levels of traffic variability",
+       subtitle = "In particular, Hunter motorways are more likely to have quiet periods"
+       ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
 
+
+#simplified chart - histograms just of motorways in Sydney and Hunter
 motorways <- data[data$road_functional_hierarchy=="Motorway",]
-
 ggplot(motorways, aes(daily_total)) +
   geom_histogram(binwidth = 1000, fill ="#F2C314") + 
   theme(text = element_text(size = 16, family="Raleway"))+
@@ -35,33 +46,58 @@ ggplot(motorways, aes(daily_total)) +
   facet_wrap(~rms_region) 
 
 
-#pair plots to look for relationships, data issues
-pairs_data <- data[,c("daily_total", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy","public_holiday", "school_holiday")]
-pairs_data[,] <- as.numeric(unlist(pairs_data[,]))
-pairs_data_small <- sample_n(pairs_data, 10000)
-pairs(pairs_data)
+#rain vs traffic - #1 B&W initial plot
+ggplot(data) +
+  geom_point(aes(y=daily_total,x=DailyRain)) + 
+  theme(text = element_text(size = 16, family="Raleway")) +
+  labs(y="Daily traffic volume", 
+       x="Daily rainfall (mm)", 
+       title = "Traffic vs Rainfall - potential correlation",
+       subtitle = "However, vertical bands invite a closer investigation"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
 
-summary(pairs_data)
 
-#Sydney Region only
-data_Sydney <- data[data$rms_region=="Sydney",]
-data_Sydney$density_workers <- data_Sydney$pop.density * data_Sydney$pop.work.age.percent / 100
+#rain vs traffic - #2 - colour for days of week
+ggplot(data) +
+  geom_point(aes(y=daily_total,x=DailyRain, colour=factor(day_of_week))) + 
+  theme(text = element_text(size = 16, family="Raleway")) +
+  labs(y="Daily traffic volume", 
+       x="Daily rainfall (mm)", 
+       colour="",
+       title = "Traffic vs Rainfall, by Day of Week",
+       subtitle = "Makes clear that the plot is skewed by observations\nfrom just a few days of extreme rain"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
 
-#pairs in Sydney
-pairs_data_Sydney <- data_Sydney[,c("daily_total", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "density_workers", "pop.school.age.percent", "density.vehicles.light")]
-pairs_data_Sydney[,] <- as.numeric(unlist(pairs_data_Sydney[,]))
-pairs_data_Sydney_small <- sample_n(pairs_data_Sydney, 10000)
-pairs(pairs_data_Sydney_small)
 
-#correlations in Sydney region
+#create rain bins (not used in final work)
+data <- data %>%
+  mutate(rainclassification =
+           cut(data$DailyRain,c(-1,5,10,20,50, Inf),labels=c("no rain","sprinkle","rain","heavy rain", "wow")))
+
+#trimmed data to look for correlations, data issues
+cor_data <- data[,c("daily_total", "DailyRain", "rainclassification", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy","public_holiday", "school_holiday")]
+cor_data[,] <- as.numeric(unlist(cor_data[,]))
+
+#traffic in different rain bins
+ggplot(cor_data, aes(daily_total)) +
+  geom_histogram(binwidth = 1000, fill ="#F2C314") + 
+  theme(text = element_text(size = 16, family="Raleway"))+
+  facet_wrap(~rainclassification, scales="free_y") 
+
+#correlations 
 library(polycor)
-pairs_data_Sydney <- as.data.frame(pairs_data_Sydney)
-hetcor(pairs_data_Sydney)
+hetcor_results <- hetcor(cor_data)
+cor_results <- cor(cor_data)
+cor_results
+hetcor_results
 
-#correlations
-pairs_data <- as.data.frame(pairs_data)
-hetcor(pairs_data)
+#explored but not used: Variable Importance package from the Random Forest world
+library("Boruta")
+boruta_output <- Boruta(daily_total ~ ., data=na.omit(data), doTrace=2)
 
+#explored but not used
 #PCA
 install.packages("FactoMineR")
 library("FactoMineR")
@@ -69,13 +105,6 @@ library("factoextra")
 res.pca <- PCA(pairs_data, graph = FALSE)
 eigenvalues <- res.pca$eig
 head(eigenvalues[, 1:2])
-
-
-
-
-
-
-
 
 #subsetting to find same same but different
   
@@ -144,9 +173,28 @@ data_345 <- merge(x = data_3and4, y = data5, by = "station_key", all = TRUE)
 data_345
 
 #this bit examines how from 2015 there is a dramatic shift in type of roads being monitored
+#create date fields that contain 1st of the month
 data$yearmonth <- as.character((data$year*100 + data$month)/100)
+data$fakedate <- paste(as.character(data$year), as.character(data$month),"01", sep="-")
+data$fakedate <- as.Date(data$fakedate)
+
 ggplot(data) +
   geom_boxplot(aes(y=daily_total,x=yearmonth)) + 
   facet_wrap(~road_functional_hierarchy, scales = "free_y") + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
+#boxplot for final report showing changed nature of Primary Road data collected from 2015
+primary_data <- data[data$road_functional_hierarchy=="Primary Road",]
+ggplot(primary_data) +
+  geom_boxplot(aes(y=daily_total,x=fakedate, group=fakedate)) + 
+  theme(text = element_text(size = 16, family="Raleway")) +
+  scale_y_continuous(label=comma) +
+  labs(y="Daily traffic volume", 
+       x="Time", 
+       title = "Primary Road daily traffic distribution, by month",
+       subtitle = "There is a clear discontinuity in April 2015"
+       ) +
+       scale_x_date(name = 'Time', 
+                    date_breaks = '1 year',
+                    date_labels = '%Y'
+                    ) 
