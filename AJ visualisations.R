@@ -76,9 +76,13 @@ data <- data %>%
   mutate(rainclassification =
            cut(data$DailyRain,c(-1,5,10,20,50, Inf),labels=c("no rain","sprinkle","rain","heavy rain", "wow")))
 
-#trimmed data to look for correlations, data issues
-cor_data <- data[,c("daily_total", "DailyRain", "rainclassification", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy","public_holiday", "school_holiday")]
-cor_data[,] <- as.numeric(unlist(cor_data[,]))
+#trimmed data to look for LGA correlations, data issues
+pairs_data_LGA <- data[,c("daily_total", "rms_region", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy")]
+pairs(pairs_data_LGA)
+
+#trimmed data to look for wider correlations, data issues
+pairs_data <- data[,c("daily_total", "DailyRain", "rainclassification", "rms_region", "road_functional_hierarchy", "month", "day_of_week", "Distance_CBD", "pop.density", "pop.work.age.percent", "pop.school.age.percent", "density.vehicles.light", "density.vehicles.heavy","public_holiday", "school_holiday")]
+cor_data[,] <- as.numeric(unlist(pairs_data[,]))
 
 #traffic in different rain bins
 ggplot(cor_data, aes(daily_total)) +
